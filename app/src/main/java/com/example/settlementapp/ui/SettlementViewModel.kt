@@ -113,27 +113,29 @@ class SettlementViewModel(
     // ---- 정산 ----
     /**
      * 정산완료 처리.
-     * - femaleAmount: 여자 1인 금액 (입력값)
-     * - settlementAmount: 정산(영수증) 총액
-     * - maleAmount: (총액 - 여자총액) / 남자수 로 자동 계산
+     * - 여자 금액 미입력: 총액을 참가 인원 수로 균등 분배 (남녀 동일)
+     * - 여자 금액 입력: 여자 1인 금액 적용, 나머지를 남자 인원 수로 분배
      */
     fun completeSettlement(
         meetingId: Long,
         settlementAmount: Long,
-        femaleAmount: Long,
+        femaleAmountInput: Long,
+        femaleAmountEntered: Boolean,
         participantsUi: List<Participant>
     ) {
         viewModelScope.launch {
             val meeting = repository.getMeeting(meetingId) ?: return@launch
             val maleCount = participantsUi.count { it.gender == Gender.MALE }
             val femaleCount = participantsUi.count { it.gender == Gender.FEMALE }
-            val maleAmount = computeMaleAmount(settlementAmount, femaleAmount, femaleCount, maleCount)
+            val calc = computeSettlement(
+                settlementAmount, femaleAmountInput, femaleCount, maleCount, femaleAmountEntered
+            )
 
             repository.updateMeeting(
                 meeting.copy(
                     settlementAmount = settlementAmount,
-                    femaleAmount = femaleAmount,
-                    maleAmount = maleAmount,
+                    femaleAmount = calc.femalePerPerson,
+                    maleAmount = calc.malePerPerson,
                     totalCount = participantsUi.size,
                     maleCount = maleCount,
                     femaleCount = femaleCount
@@ -141,14 +143,58 @@ class SettlementViewModel(
             )
 
             val updated = participantsUi.map { p ->
-                val amount = if (p.gender == Gender.FEMALE) femaleAmount else maleAmount
+                val amount = if (p.gender == Gender.FEMALE) calc.femalePerPerson else calc.malePerPerson
                 p.copy(amount = amount)
             }
             repository.updateParticipants(updated)
         }
     }
 
+    /** 정산 금액·완료 상태를 초기화 (영수증 사진은 유지) */
+    fun resetSettlement(meetingId: Long, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            val meeting = repository.getMeeting(meetingId) ?: return@launch
+            repository.updateMeeting(
+                meeting.copy(settlementAmount = 0, femaleAmount = 0, maleAmount = 0)
+            )
+            val participants = repository.getParticipants(meetingId)
+            repository.updateParticipants(
+                participants.map { it.copy(amount = 0, isSettled = false) }
+            )
+            onDone()
+        }
+    }
+
     companion object {
+        data class SettlementCalc(
+            val femalePerPerson: Long,
+            val malePerPerson: Long,
+            val equalSplit: Boolean
+        )
+
+        /**
+         * @param femaleAmountEntered 여자 1인 금액 입력란에 값이 있으면 true
+         */
+        fun computeSettlement(
+            settlementAmount: Long,
+            femaleAmountInput: Long,
+            femaleCount: Int,
+            maleCount: Int,
+            femaleAmountEntered: Boolean
+        ): SettlementCalc {
+            val totalCount = maleCount + femaleCount
+            if (settlementAmount <= 0 || totalCount <= 0) {
+                return SettlementCalc(0, 0, true)
+            }
+            if (!femaleAmountEntered) {
+                val equal = settlementAmount / totalCount
+                return SettlementCalc(equal, equal, equalSplit = true)
+            }
+            val femalePer = femaleAmountInput
+            val malePer = computeMaleAmount(settlementAmount, femaleAmountInput, femaleCount, maleCount)
+            return SettlementCalc(femalePer, malePer, equalSplit = false)
+        }
+
         /** 남자 1인 금액 = (정산총액 - 여자총액) / 남자수 */
         fun computeMaleAmount(
             settlementAmount: Long,

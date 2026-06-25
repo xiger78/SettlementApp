@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -117,14 +118,18 @@ fun SettlementScreen(
     }
 
     val settlementAmount = settlementText.toAmountLong()
-    val femaleAmount = femaleText.toAmountLong()
+    val femaleAmountInput = femaleText.toAmountLong()
+    val femaleAmountEntered = femaleText.isNotBlank()
     val femaleCount = localParticipants.count { it.gender == Gender.FEMALE }
     val maleCount = localParticipants.count { it.gender == Gender.MALE }
-    val femaleTotal = femaleAmount * femaleCount
-    val balance = (settlementAmount - femaleTotal).coerceAtLeast(0)   // 잔금액
-    val maleAmount = SettlementViewModel.computeMaleAmount(
-        settlementAmount, femaleAmount, femaleCount, maleCount
+    val totalCount = localParticipants.size
+    val calc = SettlementViewModel.computeSettlement(
+        settlementAmount, femaleAmountInput, femaleCount, maleCount, femaleAmountEntered
     )
+    val femalePerPerson = calc.femalePerPerson
+    val malePerPerson = calc.malePerPerson
+    val femaleTotal = femalePerPerson * femaleCount
+    val balance = (settlementAmount - femaleTotal).coerceAtLeast(0)
 
     // 영수증 촬영
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
@@ -203,30 +208,50 @@ fun SettlementScreen(
                         value = femaleText,
                         onValueChange = { v -> femaleText = v.filter { it.isDigit() } },
                         label = { Text(s.femalePerPersonLabel) },
-                        placeholder = { Text("0") },
+                        placeholder = { Text(s.equalPerPersonLabel) },
                         suffix = { Text(s.currency) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         supportingText = {
-                            Text(s.femaleSumNote(femaleCount, s.money(femaleTotal)))
+                            if (femaleAmountEntered) {
+                                Text(s.femaleSumNote(femaleCount, s.money(femaleTotal)))
+                            } else if (settlementAmount > 0 && totalCount > 0) {
+                                Text(s.equalSplitNote)
+                            }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(Modifier.height(12.dp))
-                    CalcResultRow(s.balanceLabel, s.money(balance), Gold)
-                    Spacer(Modifier.height(8.dp))
-                    CalcResultRow(
-                        s.malePerPersonLabel,
-                        if (femaleText.isBlank()) s.enterFemaleFirst else s.money(maleAmount),
-                        Positive
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        s.maleFormulaNote,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (calc.equalSplit && settlementAmount > 0 && totalCount > 0) {
+                        CalcResultRow(s.equalPerPersonLabel, s.money(femalePerPerson), MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            s.equalSplitNote,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else if (femaleAmountEntered) {
+                        CalcResultRow(s.balanceLabel, s.money(balance), Gold)
+                        Spacer(Modifier.height(8.dp))
+                        CalcResultRow(
+                            s.malePerPersonLabel,
+                            if (maleCount > 0) s.money(malePerPerson) else "-",
+                            Positive
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            s.maleFormulaNote,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            s.equalSplitNote,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Spacer(Modifier.height(14.dp))
             }
@@ -309,7 +334,7 @@ fun SettlementScreen(
                 }
             } else {
                 items(localParticipants, key = { it.id }) { p ->
-                    val amount = if (p.gender == Gender.FEMALE) femaleAmount else maleAmount
+                    val amount = if (p.gender == Gender.FEMALE) femalePerPerson else malePerPerson
                     SettlementParticipantRow(
                         strings = s,
                         participant = p,
@@ -339,12 +364,35 @@ fun SettlementScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        viewModel.resetSettlement(meetingId) {
+                            settlementText = ""
+                            femaleText = ""
+                            showSavedHint = false
+                            localParticipants.replaceAll { it.copy(amount = 0, isSettled = false) }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(s.resetSettlement, style = MaterialTheme.typography.titleMedium)
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    s.resetSettlementHint,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = {
                         viewModel.completeSettlement(
                             meetingId = meetingId,
                             settlementAmount = settlementAmount,
-                            femaleAmount = femaleAmount,
+                            femaleAmountInput = femaleAmountInput,
+                            femaleAmountEntered = femaleAmountEntered,
                             participantsUi = localParticipants.toList()
                         )
                         showSavedHint = true
