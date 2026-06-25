@@ -4,16 +4,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.example.settlementapp.data.Gender
 import com.example.settlementapp.data.PaymentType
 
-enum class AppLanguage(val code: String, val nativeName: String) {
-    KOREAN("ko", "한국어"),
-    JAPANESE("ja", "日本語");
-
-    companion object {
-        fun fromCode(code: String?): AppLanguage =
-            entries.firstOrNull { it.code == code } ?: KOREAN
-    }
-}
-
 /**
  * 앱 전역 문자열. 언어별 인스턴스(KoStrings / JaStrings)를 CompositionLocal 로 제공한다.
  */
@@ -248,7 +238,7 @@ val KoStrings = AppStrings(
     settingsTitle = "설정",
     languageSetting = "언어 설정",
     language = "언어",
-    languageChangeNote = "선택한 언어로 메뉴와 화면이 즉시 변경됩니다."
+    languageChangeNote = "선택한 언어로 메뉴와 화면이 즉시 변경됩니다. 처음 실행 시 휴대폰 시스템 언어가 자동 선택됩니다."
 )
 
 val JaStrings = AppStrings(
@@ -357,12 +347,14 @@ val JaStrings = AppStrings(
     settingsTitle = "設定",
     languageSetting = "言語設定",
     language = "言語",
-    languageChangeNote = "選択した言語にメニューと画面が即時変更されます。"
+    languageChangeNote = "選択した言語にメニューと画面が即時変更されます。初回起動時は端末のシステム言語が自動選択されます。"
 )
 
 fun stringsFor(lang: AppLanguage): AppStrings = when (lang) {
     AppLanguage.KOREAN -> KoStrings
     AppLanguage.JAPANESE -> JaStrings
+    AppLanguage.ENGLISH -> EnStrings
+    AppLanguage.CHINESE -> ZhStrings
 }
 
 val LocalStrings = staticCompositionLocalOf { KoStrings }

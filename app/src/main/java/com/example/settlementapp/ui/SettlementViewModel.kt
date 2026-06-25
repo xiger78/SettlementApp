@@ -35,6 +35,13 @@ class SettlementViewModel(
         _language.value = language
     }
 
+    /** 시스템 언어 자동 선택(사용자 미설정) 시 갱신 */
+    fun refreshLanguageFromSystem() {
+        if (!settingsStore.hasUserLanguagePreference()) {
+            _language.value = settingsStore.getLanguage()
+        }
+    }
+
     val meetings: StateFlow<List<Meeting>> =
         repository.observeMeetings()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
