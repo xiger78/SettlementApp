@@ -25,6 +25,8 @@ class SettlementViewModel(
     private val settingsStore: SettingsStore
 ) : ViewModel() {
 
+    enum class SplitMode { EQUAL, GENDER_DIFF, FEMALE_AMOUNT }
+
     private val _language = MutableStateFlow(settingsStore.getLanguage())
     val language: StateFlow<AppLanguage> = _language.asStateFlow()
 
@@ -113,14 +115,17 @@ class SettlementViewModel(
     // ---- 정산 ----
     /**
      * 정산완료 처리.
-     * - 여자 금액 미입력: 총액을 참가 인원 수로 균등 분배 (남녀 동일)
+     * - 여자 금액 미입력 + 남여차이 미입력: 균등 분배
+     * - 여자 금액 미입력 + 남여차이 입력: 남자 = 여자 + 차액 으로 분배
      * - 여자 금액 입력: 여자 1인 금액 적용, 나머지를 남자 인원 수로 분배
      */
     fun completeSettlement(
         meetingId: Long,
         settlementAmount: Long,
         femaleAmountInput: Long,
+        genderDiffInput: Long,
         femaleAmountEntered: Boolean,
+        genderDiffEntered: Boolean,
         participantsUi: List<Participant>
     ) {
         viewModelScope.launch {
@@ -128,7 +133,13 @@ class SettlementViewModel(
             val maleCount = participantsUi.count { it.gender == Gender.MALE }
             val femaleCount = participantsUi.count { it.gender == Gender.FEMALE }
             val calc = computeSettlement(
-                settlementAmount, femaleAmountInput, femaleCount, maleCount, femaleAmountEntered
+                settlementAmount = settlementAmount,
+                femaleAmountInput = femaleAmountInput,
+                genderDiffInput = genderDiffInput,
+                femaleCount = femaleCount,
+                maleCount = maleCount,
+                femaleAmountEntered = femaleAmountEntered,
+                genderDiffEntered = genderDiffEntered
             )
 
             repository.updateMeeting(
@@ -136,6 +147,7 @@ class SettlementViewModel(
                     settlementAmount = settlementAmount,
                     femaleAmount = calc.femalePerPerson,
                     maleAmount = calc.malePerPerson,
+                    genderDiffAmount = calc.storedGenderDiff,
                     totalCount = participantsUi.size,
                     maleCount = maleCount,
                     femaleCount = femaleCount
@@ -155,7 +167,12 @@ class SettlementViewModel(
         viewModelScope.launch {
             val meeting = repository.getMeeting(meetingId) ?: return@launch
             repository.updateMeeting(
-                meeting.copy(settlementAmount = 0, femaleAmount = 0, maleAmount = 0)
+                meeting.copy(
+                    settlementAmount = 0,
+                    femaleAmount = 0,
+                    maleAmount = 0,
+                    genderDiffAmount = 0
+                )
             )
             val participants = repository.getParticipants(meetingId)
             repository.updateParticipants(
@@ -169,30 +186,61 @@ class SettlementViewModel(
         data class SettlementCalc(
             val femalePerPerson: Long,
             val malePerPerson: Long,
-            val equalSplit: Boolean
+            val mode: SplitMode,
+            /** DB 저장용 남여차이 금액 (여자 금액 입력 모드에서는 0) */
+            val storedGenderDiff: Long = 0
         )
 
         /**
-         * @param femaleAmountEntered 여자 1인 금액 입력란에 값이 있으면 true
+         * @param femaleAmountEntered 여자 1인 금액 입력란에 값이 있으면 true (남여차이 무시)
+         * @param genderDiffEntered 남여차이 금액 입력란에 값이 있으면 true
          */
         fun computeSettlement(
             settlementAmount: Long,
             femaleAmountInput: Long,
+            genderDiffInput: Long,
             femaleCount: Int,
             maleCount: Int,
-            femaleAmountEntered: Boolean
+            femaleAmountEntered: Boolean,
+            genderDiffEntered: Boolean
         ): SettlementCalc {
             val totalCount = maleCount + femaleCount
             if (settlementAmount <= 0 || totalCount <= 0) {
-                return SettlementCalc(0, 0, true)
+                return SettlementCalc(0, 0, SplitMode.EQUAL)
             }
-            if (!femaleAmountEntered) {
-                val equal = settlementAmount / totalCount
-                return SettlementCalc(equal, equal, equalSplit = true)
+            if (femaleAmountEntered) {
+                val femalePer = femaleAmountInput
+                val malePer = computeMaleAmount(settlementAmount, femaleAmountInput, femaleCount, maleCount)
+                return SettlementCalc(femalePer, malePer, SplitMode.FEMALE_AMOUNT, storedGenderDiff = 0)
             }
-            val femalePer = femaleAmountInput
-            val malePer = computeMaleAmount(settlementAmount, femaleAmountInput, femaleCount, maleCount)
-            return SettlementCalc(femalePer, malePer, equalSplit = false)
+            if (genderDiffEntered && maleCount > 0) {
+                val (femalePer, malePer) = computeGenderDiffSplit(
+                    settlementAmount, genderDiffInput, femaleCount, maleCount
+                )
+                return SettlementCalc(
+                    femalePer, malePer, SplitMode.GENDER_DIFF, storedGenderDiff = genderDiffInput
+                )
+            }
+            val equal = settlementAmount / totalCount
+            return SettlementCalc(equal, equal, SplitMode.EQUAL)
+        }
+
+        /**
+         * 남여차이 D: 여자 1인 = (총액 − D×남자수) ÷ 총인원, 남자 1인 = 여자 1인 + D
+         */
+        fun computeGenderDiffSplit(
+            settlementAmount: Long,
+            genderDiff: Long,
+            femaleCount: Int,
+            maleCount: Int
+        ): Pair<Long, Long> {
+            val totalCount = maleCount + femaleCount
+            if (totalCount <= 0) return 0L to 0L
+            val maleExtraTotal = genderDiff * maleCount
+            val remaining = (settlementAmount - maleExtraTotal).coerceAtLeast(0)
+            val femalePer = remaining / totalCount
+            val malePer = femalePer + genderDiff
+            return femalePer to malePer
         }
 
         /** 남자 1인 금액 = (정산총액 - 여자총액) / 남자수 */

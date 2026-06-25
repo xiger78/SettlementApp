@@ -39,6 +39,9 @@ data class Meeting(
     /** 남자 1인 금액 */
     val maleAmount: Long = 0,
 
+    /** 남여차이 금액 (남자가 여자보다 더 내는 1인 차액, 0이면 미사용) */
+    val genderDiffAmount: Long = 0,
+
     /** 기타내용 */
     val note: String = "",
 

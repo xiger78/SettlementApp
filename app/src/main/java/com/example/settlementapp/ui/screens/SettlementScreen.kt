@@ -92,6 +92,7 @@ fun SettlementScreen(
 
     // 입력 상태
     var settlementText by remember { mutableStateOf("") }   // 정산금액(영수증 총액)
+    var genderDiffText by remember { mutableStateOf("") }   // 남여차이 금액
     var femaleText by remember { mutableStateOf("") }       // 여자 1인 금액
     var seededAmount by remember { mutableStateOf(false) }
 
@@ -105,7 +106,12 @@ fun SettlementScreen(
         val m = meeting
         if (m != null && !seededAmount) {
             settlementText = if (m.settlementAmount > 0) m.settlementAmount.toString() else ""
-            femaleText = if (m.femaleAmount > 0) m.femaleAmount.toString() else ""
+            genderDiffText = if (m.genderDiffAmount > 0) m.genderDiffAmount.toString() else ""
+            femaleText = when {
+                m.genderDiffAmount > 0 -> ""
+                m.femaleAmount > 0 && m.maleAmount != m.femaleAmount -> m.femaleAmount.toString()
+                else -> ""
+            }
             seededAmount = true
         }
     }
@@ -118,13 +124,21 @@ fun SettlementScreen(
     }
 
     val settlementAmount = settlementText.toAmountLong()
+    val genderDiffInput = genderDiffText.toAmountLong()
     val femaleAmountInput = femaleText.toAmountLong()
     val femaleAmountEntered = femaleText.isNotBlank()
+    val genderDiffEntered = genderDiffText.isNotBlank() && !femaleAmountEntered
     val femaleCount = localParticipants.count { it.gender == Gender.FEMALE }
     val maleCount = localParticipants.count { it.gender == Gender.MALE }
     val totalCount = localParticipants.size
     val calc = SettlementViewModel.computeSettlement(
-        settlementAmount, femaleAmountInput, femaleCount, maleCount, femaleAmountEntered
+        settlementAmount = settlementAmount,
+        femaleAmountInput = femaleAmountInput,
+        genderDiffInput = genderDiffInput,
+        femaleCount = femaleCount,
+        maleCount = maleCount,
+        femaleAmountEntered = femaleAmountEntered,
+        genderDiffEntered = genderDiffEntered
     )
     val femalePerPerson = calc.femalePerPerson
     val malePerPerson = calc.malePerPerson
@@ -205,8 +219,34 @@ fun SettlementScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
+                        value = genderDiffText,
+                        onValueChange = { v ->
+                            if (!femaleAmountEntered) {
+                                genderDiffText = v.filter { it.isDigit() }
+                            }
+                        },
+                        label = { Text(s.genderDiffLabel) },
+                        placeholder = { Text("0") },
+                        suffix = { Text(s.currency) },
+                        singleLine = true,
+                        enabled = !femaleAmountEntered,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        supportingText = {
+                            if (femaleAmountEntered) {
+                                Text(s.genderDiffNote)
+                            } else if (genderDiffEntered) {
+                                Text(s.genderDiffNote)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
                         value = femaleText,
-                        onValueChange = { v -> femaleText = v.filter { it.isDigit() } },
+                        onValueChange = { v ->
+                            femaleText = v.filter { it.isDigit() }
+                            if (femaleText.isNotBlank()) genderDiffText = ""
+                        },
                         label = { Text(s.femalePerPersonLabel) },
                         placeholder = { Text(s.equalPerPersonLabel) },
                         suffix = { Text(s.currency) },
@@ -223,34 +263,56 @@ fun SettlementScreen(
                     )
 
                     Spacer(Modifier.height(12.dp))
-                    if (calc.equalSplit && settlementAmount > 0 && totalCount > 0) {
-                        CalcResultRow(s.equalPerPersonLabel, s.money(femalePerPerson), MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            s.equalSplitNote,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else if (femaleAmountEntered) {
-                        CalcResultRow(s.balanceLabel, s.money(balance), Gold)
-                        Spacer(Modifier.height(8.dp))
-                        CalcResultRow(
-                            s.malePerPersonLabel,
-                            if (maleCount > 0) s.money(malePerPerson) else "-",
-                            Positive
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            s.maleFormulaNote,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Text(
-                            s.equalSplitNote,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    when (calc.mode) {
+                        SettlementViewModel.SplitMode.EQUAL -> {
+                            if (settlementAmount > 0 && totalCount > 0) {
+                                CalcResultRow(
+                                    s.equalPerPersonLabel,
+                                    s.money(calc.femalePerPerson),
+                                    MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.height(8.dp))
+                            }
+                            Text(
+                                s.equalSplitNote,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        SettlementViewModel.SplitMode.GENDER_DIFF -> {
+                            CalcResultRow(
+                                s.femalePerPersonResultLabel,
+                                s.money(calc.femalePerPerson),
+                                MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            CalcResultRow(
+                                s.malePerPersonLabel,
+                                if (maleCount > 0) s.money(calc.malePerPerson) else "-",
+                                Positive
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                s.genderDiffFormulaNote,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        SettlementViewModel.SplitMode.FEMALE_AMOUNT -> {
+                            CalcResultRow(s.balanceLabel, s.money(balance), Gold)
+                            Spacer(Modifier.height(8.dp))
+                            CalcResultRow(
+                                s.malePerPersonLabel,
+                                if (maleCount > 0) s.money(calc.malePerPerson) else "-",
+                                Positive
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                s.maleFormulaNote,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(14.dp))
@@ -368,6 +430,7 @@ fun SettlementScreen(
                     onClick = {
                         viewModel.resetSettlement(meetingId) {
                             settlementText = ""
+                            genderDiffText = ""
                             femaleText = ""
                             showSavedHint = false
                             localParticipants.replaceAll { it.copy(amount = 0, isSettled = false) }
@@ -392,7 +455,9 @@ fun SettlementScreen(
                             meetingId = meetingId,
                             settlementAmount = settlementAmount,
                             femaleAmountInput = femaleAmountInput,
+                            genderDiffInput = genderDiffInput,
                             femaleAmountEntered = femaleAmountEntered,
+                            genderDiffEntered = genderDiffEntered,
                             participantsUi = localParticipants.toList()
                         )
                         showSavedHint = true
