@@ -44,8 +44,15 @@ import com.example.settlementapp.data.MonthlySummary
 import com.example.settlementapp.ui.SettlementViewModel
 import com.example.settlementapp.ui.components.EmptyState
 import com.example.settlementapp.ui.components.Pill
-import com.example.settlementapp.util.monthLabel
-import com.example.settlementapp.util.toWon
+import com.example.settlementapp.ui.i18n.AppStrings
+import com.example.settlementapp.ui.i18n.LocalStrings
+
+private fun formatMonth(strings: AppStrings, yyyymm: String): String {
+    val parts = yyyymm.split("-")
+    if (parts.size < 2) return yyyymm
+    val month = parts[1].toIntOrNull() ?: return yyyymm
+    return strings.monthFormat(parts[0], month)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +61,7 @@ fun MonthlyScreen(
     onBack: () -> Unit,
     onOpenMeeting: (Long) -> Unit
 ) {
+    val s = LocalStrings.current
     val summaries by viewModel.monthlySummary.collectAsStateWithLifecycle()
     val meetings by viewModel.meetings.collectAsStateWithLifecycle()
     val expanded = remember { mutableStateMapOf<String, Boolean>() }
@@ -63,10 +71,10 @@ fun MonthlyScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("월별정산일람") },
+                title = { Text(s.monthlyTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -79,7 +87,7 @@ fun MonthlyScreen(
     ) { padding ->
         if (summaries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                EmptyState(text = "정산 내역이 없습니다.", icon = Icons.Filled.CalendarMonth)
+                EmptyState(text = s.monthlyEmpty, icon = Icons.Filled.CalendarMonth)
             }
             return@Scaffold
         }
@@ -98,13 +106,13 @@ fun MonthlyScreen(
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
-                            "전체 정산 합계",
+                            s.grandTotal,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            grandTotal.toWon(),
+                            s.money(grandTotal),
                             style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold
@@ -117,6 +125,7 @@ fun MonthlyScreen(
             items(summaries, key = { it.month }) { summary ->
                 val isOpen = expanded[summary.month] ?: false
                 MonthCard(
+                    strings = s,
                     summary = summary,
                     isOpen = isOpen,
                     meetingsOfMonth = meetings.filter { it.meetingDate.startsWith(summary.month) },
@@ -131,6 +140,7 @@ fun MonthlyScreen(
 
 @Composable
 private fun MonthCard(
+    strings: AppStrings,
     summary: MonthlySummary,
     isOpen: Boolean,
     meetingsOfMonth: List<Meeting>,
@@ -148,19 +158,19 @@ private fun MonthCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        monthLabel(summary.month),
+                        formatMonth(strings, summary.month),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Pill(
-                            text = "모임 ${summary.meetingCount}건",
+                            text = strings.meetingCount(summary.meetingCount),
                             container = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Pill(
-                            text = "참가 ${summary.totalParticipants}명",
+                            text = strings.participantsBadge(summary.totalParticipants),
                             container = MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -168,7 +178,7 @@ private fun MonthCard(
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        summary.totalAmount.toWon(),
+                        strings.money(summary.totalAmount),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
@@ -195,13 +205,13 @@ private fun MonthCard(
                             Column(Modifier.weight(1f)) {
                                 Text(meeting.meetingDate, style = MaterialTheme.typography.bodyLarge)
                                 Text(
-                                    meeting.storeName.ifBlank { "가게 미입력" },
+                                    meeting.storeName.ifBlank { strings.storeUnset },
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Text(
-                                meeting.settlementAmount.toWon(),
+                                strings.money(meeting.settlementAmount),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
@@ -209,7 +219,7 @@ private fun MonthCard(
                             IconButton(onClick = { onOpenMeeting(meeting.id) }) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = "열기"
+                                    contentDescription = strings.open
                                 )
                             }
                         }

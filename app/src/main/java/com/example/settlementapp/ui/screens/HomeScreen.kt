@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -45,11 +46,13 @@ import com.example.settlementapp.ui.components.EmptyState
 import com.example.settlementapp.ui.components.MenuCard
 import com.example.settlementapp.ui.components.Pill
 import com.example.settlementapp.ui.components.SectionHeader
+import com.example.settlementapp.ui.i18n.AppStrings
+import com.example.settlementapp.ui.i18n.LocalStrings
 import com.example.settlementapp.ui.theme.Gold
 import com.example.settlementapp.ui.theme.PayPay
 import com.example.settlementapp.ui.theme.Positive
+import com.example.settlementapp.ui.theme.Slate
 import com.example.settlementapp.ui.theme.Teal500
-import com.example.settlementapp.util.toWon
 import java.time.YearMonth
 
 @Composable
@@ -59,9 +62,11 @@ fun HomeScreen(
     onRegisterParticipant: () -> Unit,
     onSettlement: () -> Unit,
     onMonthly: () -> Unit,
+    onSettings: () -> Unit,
     onOpenMeeting: (Long) -> Unit,
     onEditMeeting: (Long) -> Unit
 ) {
+    val s = LocalStrings.current
     val meetings by viewModel.meetings.collectAsStateWithLifecycle()
 
     val currentMonth = YearMonth.now().toString() // yyyy-MM
@@ -77,46 +82,54 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            item { HomeHeader(thisMonthTotal, thisMonthMeetings.size) }
+            item { HomeHeader(s, thisMonthTotal, thisMonthMeetings.size) }
 
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Spacer(Modifier.height(16.dp))
-                    SectionHeader("메뉴")
+                    SectionHeader(s.menu)
                     Spacer(Modifier.height(8.dp))
                     MenuCard(
-                        title = "모임정보등록",
-                        subtitle = "모임날짜 · 가게 · 인원 등록",
+                        title = s.menuMeetingTitle,
+                        subtitle = s.menuMeetingSubtitle,
                         icon = Icons.AutoMirrored.Filled.EventNote,
                         accent = Teal500,
                         onClick = onRegisterMeeting
                     )
                     Spacer(Modifier.height(10.dp))
                     MenuCard(
-                        title = "참가자등록",
-                        subtitle = "모임별 참가자 이름·성별·정산형태",
+                        title = s.menuParticipantTitle,
+                        subtitle = s.menuParticipantSubtitle,
                         icon = Icons.Filled.Groups,
                         accent = Positive,
                         onClick = onRegisterParticipant
                     )
                     Spacer(Modifier.height(10.dp))
                     MenuCard(
-                        title = "정산",
-                        subtitle = "금액 계산 · 영수증 촬영 · 정산완료",
+                        title = s.menuSettlementTitle,
+                        subtitle = s.menuSettlementSubtitle,
                         icon = Icons.Filled.Receipt,
                         accent = Gold,
                         onClick = onSettlement
                     )
                     Spacer(Modifier.height(10.dp))
                     MenuCard(
-                        title = "월별정산일람",
-                        subtitle = "월별 정산 합계 보기",
+                        title = s.menuMonthlyTitle,
+                        subtitle = s.menuMonthlySubtitle,
                         icon = Icons.Filled.CalendarMonth,
                         accent = PayPay,
                         onClick = onMonthly
                     )
+                    Spacer(Modifier.height(10.dp))
+                    MenuCard(
+                        title = s.menuSettingsTitle,
+                        subtitle = s.menuSettingsSubtitle,
+                        icon = Icons.Filled.Settings,
+                        accent = Slate,
+                        onClick = onSettings
+                    )
                     Spacer(Modifier.height(20.dp))
-                    SectionHeader("최근 모임")
+                    SectionHeader(s.recentMeetings)
                     Spacer(Modifier.height(8.dp))
                 }
             }
@@ -125,10 +138,7 @@ fun HomeScreen(
                 item {
                     Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                         AppCard {
-                            EmptyState(
-                                text = "등록된 모임이 없습니다.\n‘모임정보등록’으로 시작하세요.",
-                                icon = Icons.Filled.Inbox
-                            )
+                            EmptyState(text = s.homeEmpty, icon = Icons.Filled.Inbox)
                         }
                     }
                 }
@@ -136,6 +146,7 @@ fun HomeScreen(
                 items(meetings, key = { it.id }) { meeting ->
                     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)) {
                         MeetingRowCard(
+                            strings = s,
                             meeting = meeting,
                             onClick = { onOpenMeeting(meeting.id) },
                             onEdit = { onEditMeeting(meeting.id) }
@@ -148,7 +159,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(thisMonthTotal: Long, meetingCount: Int) {
+private fun HomeHeader(s: AppStrings, thisMonthTotal: Long, meetingCount: Int) {
     Surface(
         color = MaterialTheme.colorScheme.primary,
         shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
@@ -173,27 +184,27 @@ private fun HomeHeader(thisMonthTotal: Long, meetingCount: Int) {
                 }
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    "정산앱",
+                    s.appName,
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             }
             Spacer(Modifier.height(20.dp))
             Text(
-                "이번 달 정산 합계",
+                s.thisMonthTotal,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                thisMonthTotal.toWon(),
+                s.money(thisMonthTotal),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                "모임 ${meetingCount}건",
+                s.meetingCount(meetingCount),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
             )
@@ -203,6 +214,7 @@ private fun HomeHeader(thisMonthTotal: Long, meetingCount: Int) {
 
 @Composable
 private fun MeetingRowCard(
+    strings: AppStrings,
     meeting: Meeting,
     onClick: () -> Unit,
     onEdit: () -> Unit
@@ -224,26 +236,26 @@ private fun MeetingRowCard(
                 Text(meeting.meetingDate, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    meeting.storeName.ifBlank { "가게 미입력" },
+                    meeting.storeName.ifBlank { strings.storeUnset },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Pill(
-                        text = "참가 ${meeting.totalCount}명",
+                        text = strings.participantsBadge(meeting.totalCount),
                         container = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (meeting.settlementAmount > 0) {
                         Pill(
-                            text = "정산완료",
+                            text = strings.settled,
                             container = Positive.copy(alpha = 0.15f),
                             contentColor = Positive
                         )
                     } else {
                         Pill(
-                            text = "미정산",
+                            text = strings.unsettled,
                             container = Gold.copy(alpha = 0.18f),
                             contentColor = MaterialTheme.colorScheme.secondary
                         )
@@ -252,7 +264,7 @@ private fun MeetingRowCard(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    meeting.settlementAmount.toWon(),
+                    strings.money(meeting.settlementAmount),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -264,11 +276,11 @@ private fun MeetingRowCard(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ListAlt,
-                        contentDescription = "수정",
+                        contentDescription = strings.edit,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("수정", style = MaterialTheme.typography.labelMedium)
+                    Text(strings.edit, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

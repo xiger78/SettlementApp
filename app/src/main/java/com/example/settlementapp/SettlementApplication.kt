@@ -2,6 +2,7 @@ package com.example.settlementapp
 
 import android.app.Application
 import com.example.settlementapp.data.AppDatabase
+import com.example.settlementapp.data.SettingsStore
 import com.example.settlementapp.data.SettlementRepository
 
 class SettlementApplication : Application() {
@@ -11,4 +12,6 @@ class SettlementApplication : Application() {
     val repository: SettlementRepository by lazy {
         SettlementRepository(database.meetingDao(), database.participantDao())
     }
+
+    val settingsStore: SettingsStore by lazy { SettingsStore(this) }
 }

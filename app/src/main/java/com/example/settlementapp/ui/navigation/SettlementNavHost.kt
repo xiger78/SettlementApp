@@ -12,6 +12,7 @@ import com.example.settlementapp.ui.screens.MeetingFormScreen
 import com.example.settlementapp.ui.screens.MeetingPickerScreen
 import com.example.settlementapp.ui.screens.MonthlyScreen
 import com.example.settlementapp.ui.screens.ParticipantsScreen
+import com.example.settlementapp.ui.screens.SettingsScreen
 import com.example.settlementapp.ui.screens.SettlementScreen
 
 @Composable
@@ -31,8 +32,16 @@ fun SettlementNavHost(viewModel: SettlementViewModel) {
                     navController.navigate(Routes.pickMeeting(Routes.PURPOSE_SETTLEMENT))
                 },
                 onMonthly = { navController.navigate(Routes.MONTHLY) },
+                onSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenMeeting = { id -> navController.navigate(Routes.settlement(id)) },
                 onEditMeeting = { id -> navController.navigate(Routes.meetingForm(id)) }
+            )
+        }
+
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
             )
         }
 

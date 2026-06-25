@@ -52,6 +52,8 @@ import com.example.settlementapp.ui.components.AppCard
 import com.example.settlementapp.ui.components.InfoRow
 import com.example.settlementapp.ui.components.SectionHeader
 import com.example.settlementapp.ui.components.SegmentedChoice
+import com.example.settlementapp.ui.i18n.AppStrings
+import com.example.settlementapp.ui.i18n.LocalStrings
 import com.example.settlementapp.ui.theme.PayPay
 import com.example.settlementapp.ui.theme.Positive
 import com.example.settlementapp.ui.theme.Teal500
@@ -66,6 +68,7 @@ fun ParticipantsScreen(
     onBack: () -> Unit,
     onGoSettlement: () -> Unit
 ) {
+    val s = LocalStrings.current
     val meeting by viewModel.meetingFlow(meetingId).collectAsStateWithLifecycle(initialValue = null)
     val participants by viewModel.participantsFlow(meetingId)
         .collectAsStateWithLifecycle(initialValue = emptyList())
@@ -79,15 +82,15 @@ fun ParticipantsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("참가자등록") },
+                title = { Text(s.participantsTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                     }
                 },
                 actions = {
                     IconButton(onClick = onGoSettlement) {
-                        Icon(Icons.Filled.Receipt, contentDescription = "정산")
+                        Icon(Icons.Filled.Receipt, contentDescription = s.settlementTitle)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -108,13 +111,17 @@ fun ParticipantsScreen(
             // 모임 정보
             item {
                 AppCard {
-                    SectionHeader("모임 정보")
+                    SectionHeader(s.meetingInfo)
                     Spacer(Modifier.height(4.dp))
-                    InfoRow("모임날짜", meeting?.meetingDate ?: "-")
-                    InfoRow("가게이름", meeting?.storeName?.ifBlank { "-" } ?: "-")
+                    InfoRow(s.meetingDate, meeting?.meetingDate ?: "-")
+                    InfoRow(s.storeName, meeting?.storeName?.ifBlank { "-" } ?: "-")
                     InfoRow(
-                        "등록 인원",
-                        "${participants.size}명 (남 ${participants.count { it.gender == Gender.MALE }} · 여 ${participants.count { it.gender == Gender.FEMALE }})"
+                        s.registeredCount,
+                        s.countWithGenders(
+                            participants.size,
+                            participants.count { it.gender == Gender.MALE },
+                            participants.count { it.gender == Gender.FEMALE }
+                        )
                     )
                 }
                 Spacer(Modifier.height(14.dp))
@@ -128,7 +135,7 @@ fun ParticipantsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        SectionHeader("참가자 추가")
+                        SectionHeader(s.addParticipant)
                         Text(
                             "${participants.size} / $MAX_PARTICIPANTS",
                             style = MaterialTheme.typography.labelLarge,
@@ -140,25 +147,25 @@ fun ParticipantsScreen(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("이름") },
+                        label = { Text(s.name) },
                         singleLine = true,
                         enabled = canAdd,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(12.dp))
-                    Text("성별", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(s.gender, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     SegmentedChoice(
-                        options = listOf(Gender.MALE to "남자", Gender.FEMALE to "여자"),
+                        options = listOf(Gender.MALE to s.genderMale, Gender.FEMALE to s.genderFemale),
                         selected = gender,
                         onSelect = { gender = it },
                         activeColor = Teal500
                     )
                     Spacer(Modifier.height(12.dp))
-                    Text("정산형태", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(s.paymentType, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(6.dp))
                     SegmentedChoice(
-                        options = listOf(PaymentType.CASH to "현금", PaymentType.PAYPAY to "페이페이"),
+                        options = listOf(PaymentType.CASH to s.cash, PaymentType.PAYPAY to s.paypay),
                         selected = payment,
                         onSelect = { payment = it },
                         activeColor = if (payment == PaymentType.CASH) Positive else PayPay
@@ -176,19 +183,19 @@ fun ParticipantsScreen(
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("추가", style = MaterialTheme.typography.titleMedium)
+                        Text(s.add, style = MaterialTheme.typography.titleMedium)
                     }
                     if (!canAdd) {
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "최대 ${MAX_PARTICIPANTS}명까지 등록할 수 있습니다.",
+                            s.maxParticipantsNote(MAX_PARTICIPANTS),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                SectionHeader("참가자 명단")
+                SectionHeader(s.participantList)
                 Spacer(Modifier.height(4.dp))
             }
 
@@ -197,7 +204,7 @@ fun ParticipantsScreen(
                     AppCard {
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                             Text(
-                                "아직 등록된 참가자가 없습니다.",
+                                s.noParticipants,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -207,6 +214,7 @@ fun ParticipantsScreen(
             } else {
                 items(participants, key = { it.id }) { p ->
                     ParticipantEditRow(
+                        strings = s,
                         index = participants.indexOf(p) + 1,
                         participant = p,
                         onGenderChange = { viewModel.updateParticipant(p.copy(gender = it)) },
@@ -225,7 +233,7 @@ fun ParticipantsScreen(
                 ) {
                     Icon(Icons.Filled.Receipt, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("정산하러 가기", style = MaterialTheme.typography.titleMedium)
+                    Text(s.goSettlement, style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -235,6 +243,7 @@ fun ParticipantsScreen(
 
 @Composable
 private fun ParticipantEditRow(
+    strings: AppStrings,
     index: Int,
     participant: Participant,
     onGenderChange: (Gender) -> Unit,
@@ -264,7 +273,7 @@ private fun ParticipantEditRow(
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "삭제",
+                        contentDescription = strings.delete,
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -275,7 +284,7 @@ private fun ParticipantEditRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SegmentedChoice(
-                    options = listOf(Gender.MALE to "남자", Gender.FEMALE to "여자"),
+                    options = listOf(Gender.MALE to strings.genderMale, Gender.FEMALE to strings.genderFemale),
                     selected = participant.gender,
                     onSelect = onGenderChange,
                     activeColor = Teal500,
@@ -284,7 +293,7 @@ private fun ParticipantEditRow(
             }
             Spacer(Modifier.height(8.dp))
             SegmentedChoice(
-                options = listOf(PaymentType.CASH to "현금", PaymentType.PAYPAY to "페이페이"),
+                options = listOf(PaymentType.CASH to strings.cash, PaymentType.PAYPAY to strings.paypay),
                 selected = participant.paymentType,
                 onSelect = onPaymentChange,
                 activeColor = if (participant.paymentType == PaymentType.CASH) Positive else PayPay,

@@ -9,16 +9,29 @@ import com.example.settlementapp.data.MeetingWithParticipants
 import com.example.settlementapp.data.MonthlySummary
 import com.example.settlementapp.data.Participant
 import com.example.settlementapp.data.PaymentType
+import com.example.settlementapp.data.SettingsStore
 import com.example.settlementapp.data.SettlementRepository
+import com.example.settlementapp.ui.i18n.AppLanguage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettlementViewModel(
-    private val repository: SettlementRepository
+    private val repository: SettlementRepository,
+    private val settingsStore: SettingsStore
 ) : ViewModel() {
+
+    private val _language = MutableStateFlow(settingsStore.getLanguage())
+    val language: StateFlow<AppLanguage> = _language.asStateFlow()
+
+    fun setLanguage(language: AppLanguage) {
+        settingsStore.setLanguage(language)
+        _language.value = language
+    }
 
     val meetings: StateFlow<List<Meeting>> =
         repository.observeMeetings()
@@ -152,12 +165,13 @@ class SettlementViewModel(
 }
 
 class SettlementViewModelFactory(
-    private val repository: SettlementRepository
+    private val repository: SettlementRepository,
+    private val settingsStore: SettingsStore
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SettlementViewModel::class.java)) {
-            return SettlementViewModel(repository) as T
+            return SettlementViewModel(repository, settingsStore) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

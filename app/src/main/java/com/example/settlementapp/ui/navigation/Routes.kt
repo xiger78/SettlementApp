@@ -7,6 +7,7 @@ object Routes {
     const val PARTICIPANTS = "participants"       // /{meetingId}
     const val SETTLEMENT = "settlement"           // /{meetingId}
     const val MONTHLY = "monthly"
+    const val SETTINGS = "settings"
 
     const val ARG_MEETING_ID = "meetingId"
     const val ARG_PURPOSE = "purpose"

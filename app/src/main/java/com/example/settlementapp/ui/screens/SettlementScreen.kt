@@ -67,12 +67,13 @@ import com.example.settlementapp.ui.components.InfoRow
 import com.example.settlementapp.ui.components.Pill
 import com.example.settlementapp.ui.components.SectionHeader
 import com.example.settlementapp.ui.components.SegmentedChoice
+import com.example.settlementapp.ui.i18n.AppStrings
+import com.example.settlementapp.ui.i18n.LocalStrings
 import com.example.settlementapp.ui.theme.Gold
 import com.example.settlementapp.ui.theme.PayPay
 import com.example.settlementapp.ui.theme.Positive
 import com.example.settlementapp.util.ReceiptFiles
 import com.example.settlementapp.util.toAmountLong
-import com.example.settlementapp.util.toWon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +83,7 @@ fun SettlementScreen(
     onBack: () -> Unit,
     onEditParticipants: () -> Unit
 ) {
+    val s = LocalStrings.current
     val context = LocalContext.current
     val meeting by viewModel.meetingFlow(meetingId).collectAsStateWithLifecycle(initialValue = null)
     val dbParticipants by viewModel.participantsFlow(meetingId)
@@ -138,15 +140,15 @@ fun SettlementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("정산") },
+                title = { Text(s.settlementTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                     }
                 },
                 actions = {
                     IconButton(onClick = onEditParticipants) {
-                        Icon(Icons.Filled.Edit, contentDescription = "참가자수정")
+                        Icon(Icons.Filled.Edit, contentDescription = s.editParticipants)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -167,13 +169,13 @@ fun SettlementScreen(
             // 1~3. 모임 정보
             item {
                 AppCard {
-                    SectionHeader("모임 정보")
+                    SectionHeader(s.meetingInfo)
                     Spacer(Modifier.height(4.dp))
-                    InfoRow("모임날짜", meeting?.meetingDate ?: "-")
-                    InfoRow("가게이름", meeting?.storeName?.ifBlank { "-" } ?: "-")
+                    InfoRow(s.meetingDate, meeting?.meetingDate ?: "-")
+                    InfoRow(s.storeName, meeting?.storeName?.ifBlank { "-" } ?: "-")
                     InfoRow(
-                        "참가인원",
-                        "${localParticipants.size}명 (남 $maleCount · 여 $femaleCount)"
+                        s.participantCount,
+                        s.countWithGenders(localParticipants.size, maleCount, femaleCount)
                     )
                 }
                 Spacer(Modifier.height(14.dp))
@@ -182,46 +184,46 @@ fun SettlementScreen(
             // 4~6. 금액 계산
             item {
                 AppCard {
-                    SectionHeader("금액 계산")
+                    SectionHeader(s.amountCalc)
                     Spacer(Modifier.height(8.dp))
 
                     OutlinedTextField(
                         value = settlementText,
                         onValueChange = { v -> settlementText = v.filter { it.isDigit() } },
-                        label = { Text("정산금액 (영수증 총액)") },
+                        label = { Text(s.settlementAmountLabel) },
                         placeholder = { Text("0") },
-                        suffix = { Text("원") },
+                        suffix = { Text(s.currency) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        supportingText = { Text(settlementAmount.toWon()) },
+                        supportingText = { Text(s.money(settlementAmount)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = femaleText,
                         onValueChange = { v -> femaleText = v.filter { it.isDigit() } },
-                        label = { Text("여자 1인 금액") },
+                        label = { Text(s.femalePerPersonLabel) },
                         placeholder = { Text("0") },
-                        suffix = { Text("원") },
+                        suffix = { Text(s.currency) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         supportingText = {
-                            Text("여자 ${femaleCount}명 합계 ${femaleTotal.toWon()}")
+                            Text(s.femaleSumNote(femaleCount, s.money(femaleTotal)))
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(Modifier.height(12.dp))
-                    CalcResultRow("잔금액 (남자 부담 총액)", balance.toWon(), Gold)
+                    CalcResultRow(s.balanceLabel, s.money(balance), Gold)
                     Spacer(Modifier.height(8.dp))
                     CalcResultRow(
-                        "남자 1인 금액 (자동계산)",
-                        if (femaleText.isBlank()) "여자 금액 입력 후 계산" else maleAmount.toWon(),
+                        s.malePerPersonLabel,
+                        if (femaleText.isBlank()) s.enterFemaleFirst else s.money(maleAmount),
                         Positive
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "※ 남자 1인 금액 = (정산금액 − 여자 합계) ÷ 남자 인원수",
+                        s.maleFormulaNote,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -237,7 +239,7 @@ fun SettlementScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        SectionHeader("영수증")
+                        SectionHeader(s.receipt)
                         OutlinedButton(onClick = {
                             val uri = ReceiptFiles.newReceiptUri(context)
                             pendingUri = uri
@@ -245,7 +247,7 @@ fun SettlementScreen(
                         }) {
                             Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(if (meeting?.receiptPhotoUri == null) "촬영" else "다시 촬영")
+                            Text(if (meeting?.receiptPhotoUri == null) s.capture else s.recapture)
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -253,7 +255,7 @@ fun SettlementScreen(
                     if (photo != null) {
                         AsyncImage(
                             model = photo,
-                            contentDescription = "영수증 사진",
+                            contentDescription = s.receipt,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -278,7 +280,7 @@ fun SettlementScreen(
                                     )
                                     Spacer(Modifier.height(6.dp))
                                     Text(
-                                        "카메라로 영수증을 촬영하세요",
+                                        s.receiptHint,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -288,7 +290,7 @@ fun SettlementScreen(
                     }
                 }
                 Spacer(Modifier.height(14.dp))
-                SectionHeader("참가자 정산")
+                SectionHeader(s.participantSettlement)
                 Spacer(Modifier.height(4.dp))
             }
 
@@ -298,7 +300,7 @@ fun SettlementScreen(
                     AppCard {
                         Box(modifier = Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
                             Text(
-                                "참가자가 없습니다. 먼저 참가자를 등록하세요.",
+                                s.noParticipantsSettlement,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -309,6 +311,7 @@ fun SettlementScreen(
                 items(localParticipants, key = { it.id }) { p ->
                     val amount = if (p.gender == Gender.FEMALE) femaleAmount else maleAmount
                     SettlementParticipantRow(
+                        strings = s,
                         participant = p,
                         amount = amount,
                         onTogglePayment = {
@@ -331,7 +334,7 @@ fun SettlementScreen(
                 Spacer(Modifier.height(12.dp))
                 val settledCount = localParticipants.count { it.isSettled }
                 Text(
-                    "정산 완료: $settledCount / ${localParticipants.size}명",
+                    s.settledProgress(settledCount, localParticipants.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -351,12 +354,12 @@ fun SettlementScreen(
                 ) {
                     Icon(Icons.Filled.CheckCircle, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("정산완료", style = MaterialTheme.typography.titleMedium)
+                    Text(s.completeSettlement, style = MaterialTheme.typography.titleMedium)
                 }
                 if (showSavedHint) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "정산 내용이 저장되었습니다.",
+                        s.savedHint,
                         style = MaterialTheme.typography.labelMedium,
                         color = Positive
                     )
@@ -394,6 +397,7 @@ private fun CalcResultRow(label: String, value: String, accent: androidx.compose
 
 @Composable
 private fun SettlementParticipantRow(
+    strings: AppStrings,
     participant: Participant,
     amount: Long,
     onTogglePayment: () -> Unit,
@@ -415,7 +419,7 @@ private fun SettlementParticipantRow(
             IconButton(onClick = onToggleSettled) {
                 Icon(
                     if (participant.isSettled) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
-                    contentDescription = "정산여부",
+                    contentDescription = strings.settled,
                     tint = if (participant.isSettled) Positive else MaterialTheme.colorScheme.outline,
                     modifier = Modifier.size(28.dp)
                 )
@@ -430,14 +434,14 @@ private fun SettlementParticipantRow(
                     )
                     Spacer(Modifier.width(8.dp))
                     Pill(
-                        text = participant.gender.label,
+                        text = strings.genderLabel(participant.gender),
                         container = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    amount.toWon(),
+                    strings.money(amount),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -446,7 +450,7 @@ private fun SettlementParticipantRow(
             // 정산형태 토글
             val payColor = if (participant.paymentType == PaymentType.CASH) Positive else PayPay
             Pill(
-                text = participant.paymentType.label,
+                text = strings.paymentLabel(participant.paymentType),
                 container = payColor.copy(alpha = 0.15f),
                 contentColor = payColor,
                 modifier = Modifier.clickable { onTogglePayment() }

@@ -40,6 +40,7 @@ import com.example.settlementapp.ui.SettlementViewModel
 import com.example.settlementapp.ui.components.AppCard
 import com.example.settlementapp.ui.components.DatePickerModal
 import com.example.settlementapp.ui.components.SectionHeader
+import com.example.settlementapp.ui.i18n.LocalStrings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.flowOf
 import java.time.LocalDate
@@ -52,6 +53,7 @@ fun MeetingFormScreen(
     onBack: () -> Unit,
     onSavedNew: (Long) -> Unit
 ) {
+    val s = LocalStrings.current
     val isEdit = meetingId > 0
     val meetingFlow = remember(meetingId) {
         if (isEdit) viewModel.meetingFlow(meetingId) else flowOf(null)
@@ -85,10 +87,10 @@ fun MeetingFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isEdit) "모임정보 수정" else "모임정보등록") },
+                title = { Text(if (isEdit) s.meetingFormTitleEdit else s.meetingFormTitleNew) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -107,17 +109,17 @@ fun MeetingFormScreen(
                 .padding(16.dp)
         ) {
             AppCard {
-                SectionHeader("기본 정보")
+                SectionHeader(s.basicInfo)
                 Spacer(Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = date,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("모임날짜") },
+                    label = { Text(s.meetingDate) },
                     trailingIcon = {
                         IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Filled.CalendarMonth, contentDescription = "날짜선택")
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = s.pickDate)
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -126,7 +128,7 @@ fun MeetingFormScreen(
                 OutlinedTextField(
                     value = storeName,
                     onValueChange = { storeName = it },
-                    label = { Text("가게이름") },
+                    label = { Text(s.storeName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -134,7 +136,7 @@ fun MeetingFormScreen(
                 OutlinedTextField(
                     value = storePhone,
                     onValueChange = { storePhone = it },
-                    label = { Text("가게전화번호") },
+                    label = { Text(s.storePhone) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.fillMaxWidth()
@@ -144,13 +146,13 @@ fun MeetingFormScreen(
             Spacer(Modifier.height(14.dp))
 
             AppCard {
-                SectionHeader("참가인원")
+                SectionHeader(s.headcount)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = total,
                         onValueChange = { v -> total = v.filter { it.isDigit() } },
-                        label = { Text("총인원") },
+                        label = { Text(s.totalPeople) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -158,7 +160,7 @@ fun MeetingFormScreen(
                     OutlinedTextField(
                         value = male,
                         onValueChange = { v -> male = v.filter { it.isDigit() } },
-                        label = { Text("남자") },
+                        label = { Text(s.male) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -166,7 +168,7 @@ fun MeetingFormScreen(
                     OutlinedTextField(
                         value = female,
                         onValueChange = { v -> female = v.filter { it.isDigit() } },
-                        label = { Text("여자") },
+                        label = { Text(s.female) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -174,7 +176,7 @@ fun MeetingFormScreen(
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "※ 참가자등록 화면에서 이름을 추가하면 인원수가 자동 갱신됩니다.",
+                    s.headcountAutoNote,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -183,12 +185,12 @@ fun MeetingFormScreen(
             Spacer(Modifier.height(14.dp))
 
             AppCard {
-                SectionHeader("기타내용")
+                SectionHeader(s.otherContent)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("메모") },
+                    label = { Text(s.memo) },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -222,7 +224,7 @@ fun MeetingFormScreen(
             ) {
                 Icon(Icons.Filled.Check, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (isEdit) "저장" else "등록하고 참가자 추가", style = MaterialTheme.typography.titleMedium)
+                Text(if (isEdit) s.save else s.saveAndAddParticipants, style = MaterialTheme.typography.titleMedium)
             }
             Spacer(Modifier.height(24.dp))
         }

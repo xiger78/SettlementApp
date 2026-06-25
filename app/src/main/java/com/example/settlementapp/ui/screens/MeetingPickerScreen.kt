@@ -40,8 +40,9 @@ import com.example.settlementapp.data.Meeting
 import com.example.settlementapp.ui.SettlementViewModel
 import com.example.settlementapp.ui.components.EmptyState
 import com.example.settlementapp.ui.components.Pill
+import com.example.settlementapp.ui.i18n.AppStrings
+import com.example.settlementapp.ui.i18n.LocalStrings
 import com.example.settlementapp.ui.navigation.Routes
-import com.example.settlementapp.util.toWon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,8 +53,9 @@ fun MeetingPickerScreen(
     onPicked: (Long) -> Unit,
     onCreateNew: () -> Unit
 ) {
+    val s = LocalStrings.current
     val meetings by viewModel.meetings.collectAsStateWithLifecycle()
-    val title = if (purpose == Routes.PURPOSE_SETTLEMENT) "정산할 모임 선택" else "참가자 등록할 모임 선택"
+    val title = if (purpose == Routes.PURPOSE_SETTLEMENT) s.pickForSettlement else s.pickForParticipant
 
     Scaffold(
         topBar = {
@@ -61,7 +63,7 @@ fun MeetingPickerScreen(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -75,7 +77,7 @@ fun MeetingPickerScreen(
             ExtendedFloatingActionButton(
                 onClick = onCreateNew,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("새 모임") },
+                text = { Text(s.newMeeting) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             )
@@ -84,7 +86,7 @@ fun MeetingPickerScreen(
         if (meetings.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 EmptyState(
-                    text = "등록된 모임이 없습니다.\n먼저 모임을 등록하세요.",
+                    text = s.pickerEmpty,
                     icon = Icons.Filled.EventBusy
                 )
             }
@@ -96,7 +98,7 @@ fun MeetingPickerScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
             ) {
                 items(meetings, key = { it.id }) { meeting ->
-                    PickerRow(meeting = meeting, onClick = { onPicked(meeting.id) })
+                    PickerRow(strings = s, meeting = meeting, onClick = { onPicked(meeting.id) })
                     Spacer(Modifier.height(10.dp))
                 }
             }
@@ -105,7 +107,7 @@ fun MeetingPickerScreen(
 }
 
 @Composable
-private fun PickerRow(meeting: Meeting, onClick: () -> Unit) {
+private fun PickerRow(strings: AppStrings, meeting: Meeting, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -123,19 +125,19 @@ private fun PickerRow(meeting: Meeting, onClick: () -> Unit) {
                 Text(meeting.meetingDate, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    meeting.storeName.ifBlank { "가게 미입력" },
+                    meeting.storeName.ifBlank { strings.storeUnset },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Pill(
-                        text = "참가 ${meeting.totalCount}명",
+                        text = strings.participantsBadge(meeting.totalCount),
                         container = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Pill(
-                        text = "남 ${meeting.maleCount} · 여 ${meeting.femaleCount}",
+                        text = strings.maleFemaleBadge(meeting.maleCount, meeting.femaleCount),
                         container = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -144,7 +146,7 @@ private fun PickerRow(meeting: Meeting, onClick: () -> Unit) {
             Column(horizontalAlignment = Alignment.End) {
                 if (meeting.settlementAmount > 0) {
                     Text(
-                        meeting.settlementAmount.toWon(),
+                        strings.money(meeting.settlementAmount),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
