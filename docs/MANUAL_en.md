@@ -38,13 +38,19 @@
 
 **Equal split** — no female amount or gender difference
 
+> 40,000 KRW, 4 people → **10,000 KRW each**
+
 <img src="screenshots/04_settlement_calc_en.png" width="320" alt="Equal split" />
 
 **Gender difference** — male pays female amount + difference
 
+> 40,000 KRW, difference 5,000, M2 · F2 → **F 7,500 / M 12,500**
+
 <img src="screenshots/04_settlement_genderdiff_en.png" width="320" alt="Gender diff" />
 
 **Female per person** — gender difference reset to 0
+
+> 40,000 KRW, female 5,000 each, M2 · F2 → **male balance 30,000 KRW**
 
 <img src="screenshots/04_settlement_split_en.png" width="320" alt="Female amount" />
 

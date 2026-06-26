@@ -38,13 +38,19 @@
 
 **均分** — 未输入女性金额和男女差额
 
+> 40,000韩元, 4人 → **每人 10,000韩元**
+
 <img src="screenshots/04_settlement_calc_zh.png" width="320" alt="均分" />
 
 **男女差额** — 男性 = 女性 + 差额
 
+> 40,000韩元, 差额 5,000韩元, 男2·女2 → **女 7,500 / 男 12,500**
+
 <img src="screenshots/04_settlement_genderdiff_zh.png" width="320" alt="男女差额" />
 
 **女性每人金额** — 男女差额重置为0
+
+> 40,000韩元, 女性 5,000韩元×2人 → **男性负担 30,000韩元**
 
 <img src="screenshots/04_settlement_split_zh.png" width="320" alt="女性金额" />
 

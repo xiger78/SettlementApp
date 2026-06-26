@@ -38,13 +38,19 @@
 
 **均等割り** — 女性・男女差額未入力
 
+> 40,000円、4名 → **1人 10,000円**
+
 <img src="screenshots/04_settlement_calc_ja.png" width="320" alt="均等" />
 
 **男女差額入力** — 男性 = 女性 + 差額
 
+> 40,000円、差額 5,000円、男2·女2 → **女 7,500 / 男 12,500**
+
 <img src="screenshots/04_settlement_genderdiff_ja.png" width="320" alt="男女差額" />
 
 **女性金額入力** — 男女差額は0にリセット
+
+> 40,000円、女性 5,000円×2名 → **男性負担 30,000円**
 
 <img src="screenshots/04_settlement_split_ja.png" width="320" alt="女性金額" />
 
