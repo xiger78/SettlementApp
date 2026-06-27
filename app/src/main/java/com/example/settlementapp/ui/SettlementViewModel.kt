@@ -111,6 +111,52 @@ class SettlementViewModel(
         }
     }
 
+    /** 남/여 인원수만큼 기본 이름으로 참가자를 DB에 일괄 등록 */
+    fun registerParticipantsFromCounts(
+        meetingId: Long,
+        maleCount: Int,
+        femaleCount: Int,
+        maleNameForIndex: (Int) -> String,
+        femaleNameForIndex: (Int) -> String,
+        paymentType: PaymentType = PaymentType.CASH
+    ) {
+        viewModelScope.launch {
+            if (maleCount <= 0 && femaleCount <= 0) return@launch
+            val existing = repository.getParticipants(meetingId)
+            var slots = MAX_PARTICIPANTS - existing.size
+            if (slots <= 0) return@launch
+
+            val existingMale = existing.count { it.gender == Gender.MALE }
+            val existingFemale = existing.count { it.gender == Gender.FEMALE }
+            val toInsert = mutableListOf<Participant>()
+
+            (1..maleCount).take(slots).forEach { i ->
+                toInsert.add(
+                    Participant(
+                        meetingId = meetingId,
+                        name = maleNameForIndex(existingMale + i),
+                        gender = Gender.MALE,
+                        paymentType = paymentType
+                    )
+                )
+                slots--
+            }
+            (1..femaleCount).take(slots).forEach { i ->
+                toInsert.add(
+                    Participant(
+                        meetingId = meetingId,
+                        name = femaleNameForIndex(existingFemale + i),
+                        gender = Gender.FEMALE,
+                        paymentType = paymentType
+                    )
+                )
+            }
+
+            repository.insertParticipants(toInsert)
+            syncMeetingHeadcount(meetingId)
+        }
+    }
+
     fun updateParticipant(participant: Participant) {
         viewModelScope.launch { repository.updateParticipant(participant) }
     }
@@ -204,6 +250,8 @@ class SettlementViewModel(
     }
 
     companion object {
+        const val MAX_PARTICIPANTS = 30
+
         data class SettlementCalc(
             val femalePerPerson: Long,
             val malePerPerson: Long,

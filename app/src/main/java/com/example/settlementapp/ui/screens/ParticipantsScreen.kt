@@ -35,15 +35,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,15 +60,6 @@ import com.example.settlementapp.ui.theme.PayPay
 import com.example.settlementapp.ui.theme.Positive
 import com.example.settlementapp.ui.theme.Teal500
 
-private const val MAX_PARTICIPANTS = 30
-
-private data class ParticipantDraft(
-    val localId: Long,
-    val name: String,
-    val gender: Gender,
-    val paymentType: PaymentType = PaymentType.CASH
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParticipantsScreen(
@@ -85,11 +75,27 @@ fun ParticipantsScreen(
 
     var maleCountInput by remember { mutableStateOf("") }
     var femaleCountInput by remember { mutableStateOf("") }
-    val drafts = remember { mutableStateListOf<ParticipantDraft>() }
     val editedNames = remember { mutableStateMapOf<Long, String>() }
+    var autoRegisteredFromMeeting by remember(meetingId) { mutableStateOf(false) }
 
-    val totalPlanned = participants.size + drafts.size
-    val canAddMore = totalPlanned < MAX_PARTICIPANTS
+    val maxParticipants = SettlementViewModel.MAX_PARTICIPANTS
+    val canAddMore = participants.size < maxParticipants
+
+    LaunchedEffect(meeting, participants) {
+        if (autoRegisteredFromMeeting || participants.isNotEmpty()) return@LaunchedEffect
+        val m = meeting ?: return@LaunchedEffect
+        val maleN = m.maleCount
+        val femaleN = m.femaleCount
+        if (maleN + femaleN <= 0) return@LaunchedEffect
+        autoRegisteredFromMeeting = true
+        viewModel.registerParticipantsFromCounts(
+            meetingId = meetingId,
+            maleCount = maleN,
+            femaleCount = femaleN,
+            maleNameForIndex = s.defaultMaleName,
+            femaleNameForIndex = s.defaultFemaleName
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -147,7 +153,7 @@ fun ParticipantsScreen(
                     ) {
                         SectionHeader(s.headcount)
                         Text(
-                            "$totalPlanned / $MAX_PARTICIPANTS",
+                            "${participants.size} / $maxParticipants",
                             style = MaterialTheme.typography.labelLarge,
                             color = if (canAddMore) MaterialTheme.colorScheme.onSurfaceVariant
                             else MaterialTheme.colorScheme.error
@@ -180,27 +186,13 @@ fun ParticipantsScreen(
                             val maleN = maleCountInput.toIntOrNull() ?: 0
                             val femaleN = femaleCountInput.toIntOrNull() ?: 0
                             if (maleN + femaleN <= 0) return@Button
-                            val slots = MAX_PARTICIPANTS - totalPlanned
-                            var remaining = slots
-                            (1..maleN).take(remaining).forEach { i ->
-                                drafts.add(
-                                    ParticipantDraft(
-                                        localId = System.nanoTime() + i,
-                                        name = s.defaultMaleName(i),
-                                        gender = Gender.MALE
-                                    )
-                                )
-                                remaining--
-                            }
-                            (1..femaleN).take(remaining).forEach { i ->
-                                drafts.add(
-                                    ParticipantDraft(
-                                        localId = System.nanoTime() + i + 1000,
-                                        name = s.defaultFemaleName(i),
-                                        gender = Gender.FEMALE
-                                    )
-                                )
-                            }
+                            viewModel.registerParticipantsFromCounts(
+                                meetingId = meetingId,
+                                maleCount = maleN,
+                                femaleCount = femaleN,
+                                maleNameForIndex = s.defaultMaleName,
+                                femaleNameForIndex = s.defaultFemaleName
+                            )
                             maleCountInput = ""
                             femaleCountInput = ""
                         },
@@ -213,7 +205,7 @@ fun ParticipantsScreen(
                     if (!canAddMore) {
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            s.maxParticipantsNote(MAX_PARTICIPANTS),
+                            s.maxParticipantsNote(maxParticipants),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -224,7 +216,7 @@ fun ParticipantsScreen(
                 Spacer(Modifier.height(4.dp))
             }
 
-            if (drafts.isEmpty() && participants.isEmpty()) {
+            if (participants.isEmpty()) {
                 item {
                     AppCard {
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
@@ -236,29 +228,6 @@ fun ParticipantsScreen(
                         }
                     }
                 }
-            }
-
-            items(drafts.size, key = { drafts[it].localId }) { index ->
-                val draft = drafts[index]
-                DraftParticipantRow(
-                    strings = s,
-                    draft = draft,
-                    onNameChange = { drafts[index] = draft.copy(name = it) },
-                    onPaymentChange = { drafts[index] = draft.copy(paymentType = it) },
-                    onSave = {
-                        if (draft.name.isNotBlank()) {
-                            viewModel.addParticipant(
-                                meetingId,
-                                draft.name,
-                                draft.gender,
-                                draft.paymentType
-                            )
-                            drafts.removeAt(index)
-                        }
-                    },
-                    onDelete = { drafts.removeAt(index) }
-                )
-                Spacer(Modifier.height(10.dp))
             }
 
             items(participants, key = { it.id }) { p ->
@@ -297,67 +266,6 @@ fun ParticipantsScreen(
                     Text(s.goSettlement, style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(Modifier.height(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DraftParticipantRow(
-    strings: AppStrings,
-    draft: ParticipantDraft,
-    onNameChange: (String) -> Unit,
-    onPaymentChange: (PaymentType) -> Unit,
-    onSave: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    strings.genderLabel(draft.gender),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = strings.delete,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-            OutlinedTextField(
-                value = draft.name,
-                onValueChange = onNameChange,
-                label = { Text(strings.name) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            SegmentedChoice(
-                options = listOf(PaymentType.CASH to strings.cash, PaymentType.PAYPAY to strings.paypay),
-                selected = draft.paymentType,
-                onSelect = onPaymentChange,
-                activeColor = if (draft.paymentType == PaymentType.CASH) Positive else PayPay,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = onSave,
-                enabled = draft.name.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().height(44.dp)
-            ) {
-                Text(strings.saveParticipant)
             }
         }
     }

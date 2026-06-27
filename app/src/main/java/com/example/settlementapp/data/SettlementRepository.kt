@@ -28,6 +28,10 @@ class SettlementRepository(
     suspend fun insertParticipant(participant: Participant): Long =
         participantDao.insert(participant)
 
+    suspend fun insertParticipants(participants: List<Participant>) {
+        if (participants.isNotEmpty()) participantDao.insertAll(participants)
+    }
+
     suspend fun updateParticipant(participant: Participant) =
         participantDao.update(participant)
 
