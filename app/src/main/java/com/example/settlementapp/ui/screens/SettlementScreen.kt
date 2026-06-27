@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -143,6 +145,7 @@ fun SettlementScreen(
     val femalePerPerson = calc.femalePerPerson
     val malePerPerson = calc.malePerPerson
     val femaleTotal = femalePerPerson * femaleCount
+    val maleTotalAmount = malePerPerson * maleCount
     val balance = (settlementAmount - femaleTotal).coerceAtLeast(0)
 
     // 영수증 촬영
@@ -206,60 +209,72 @@ fun SettlementScreen(
                     SectionHeader(s.amountCalc)
                     Spacer(Modifier.height(8.dp))
 
-                    OutlinedTextField(
+                    AmountFieldWithClear(
                         value = settlementText,
-                        onValueChange = { v -> settlementText = v.filter { it.isDigit() } },
-                        label = { Text(s.settlementAmountLabel) },
-                        placeholder = { Text("0") },
-                        suffix = { Text(s.currency) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        supportingText = { Text(s.money(settlementAmount)) },
-                        modifier = Modifier.fillMaxWidth()
+                        onValueChange = { settlementText = it.filter { c -> c.isDigit() } },
+                        onClear = { settlementText = "" },
+                        label = s.settlementAmountLabel,
+                        placeholder = "0",
+                        clearLabel = s.clearField,
+                        currency = s.currency,
+                        supportingText = s.money(settlementAmount)
                     )
+                    if (settlementAmount > 0 && totalCount > 0) {
+                        Spacer(Modifier.height(10.dp))
+                        CalcResultRow(
+                            s.genderTotalSumLabel,
+                            s.money(settlementAmount),
+                            MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            s.genderTotalBreakdown(
+                                maleCount,
+                                s.money(maleTotalAmount),
+                                femaleCount,
+                                s.money(femaleTotal)
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
+                    AmountFieldWithClear(
                         value = genderDiffText,
                         onValueChange = { v ->
                             if (!femaleAmountEntered) {
-                                genderDiffText = v.filter { it.isDigit() }
+                                genderDiffText = v.filter { c -> c.isDigit() }
                             }
                         },
-                        label = { Text(s.genderDiffLabel) },
-                        placeholder = { Text("0") },
-                        suffix = { Text(s.currency) },
-                        singleLine = true,
+                        onClear = { genderDiffText = "" },
+                        label = s.genderDiffLabel,
+                        placeholder = "0",
+                        clearLabel = s.clearField,
+                        currency = s.currency,
                         enabled = !femaleAmountEntered,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        supportingText = {
-                            if (femaleAmountEntered) {
-                                Text(s.genderDiffNote)
-                            } else if (genderDiffEntered) {
-                                Text(s.genderDiffNote)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        supportingText = when {
+                            femaleAmountEntered -> s.genderDiffNote
+                            genderDiffEntered -> s.genderDiffNote
+                            else -> null
+                        }
                     )
                     Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
+                    AmountFieldWithClear(
                         value = femaleText,
                         onValueChange = { v ->
-                            femaleText = v.filter { it.isDigit() }
+                            femaleText = v.filter { c -> c.isDigit() }
                             if (femaleText.isNotBlank()) genderDiffText = ""
                         },
-                        label = { Text(s.femalePerPersonLabel) },
-                        placeholder = { Text(s.equalPerPersonLabel) },
-                        suffix = { Text(s.currency) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        supportingText = {
-                            if (femaleAmountEntered) {
-                                Text(s.femaleSumNote(femaleCount, s.money(femaleTotal)))
-                            } else if (settlementAmount > 0 && totalCount > 0) {
-                                Text(s.equalSplitNote)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        onClear = { femaleText = "" },
+                        label = s.femalePerPersonLabel,
+                        placeholder = s.equalPerPersonLabel,
+                        clearLabel = s.clearField,
+                        currency = s.currency,
+                        supportingText = when {
+                            femaleAmountEntered -> s.femaleSumNote(femaleCount, s.money(femaleTotal))
+                            settlementAmount > 0 && totalCount > 0 -> s.equalSplitNote
+                            else -> null
+                        }
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -320,6 +335,8 @@ fun SettlementScreen(
 
             // 7. 영수증 사진
             item {
+                val photo = meeting?.receiptPhotoUri
+                val fileSize = remember(photo) { ReceiptFiles.fileSizeLabel(context, photo) }
                 AppCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -327,18 +344,39 @@ fun SettlementScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         SectionHeader(s.receipt)
-                        OutlinedButton(onClick = {
-                            val uri = ReceiptFiles.newReceiptUri(context)
-                            pendingUri = uri
-                            cameraLauncher.launch(uri)
-                        }) {
-                            Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(if (meeting?.receiptPhotoUri == null) s.capture else s.recapture)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (fileSize != null) {
+                                Text(
+                                    s.receiptFileSize(fileSize),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = {
+                                        ReceiptFiles.deleteReceiptFile(context, photo)
+                                        viewModel.clearReceiptPhoto(meetingId)
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = s.deleteReceipt,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                            OutlinedButton(onClick = {
+                                val uri = ReceiptFiles.newReceiptUri(context)
+                                pendingUri = uri
+                                cameraLauncher.launch(uri)
+                            }) {
+                                Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (photo == null) s.capture else s.recapture)
+                            }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    val photo = meeting?.receiptPhotoUri
                     if (photo != null) {
                         AsyncImage(
                             model = photo,
@@ -481,6 +519,39 @@ fun SettlementScreen(
             }
         }
     }
+}
+
+@Composable
+private fun AmountFieldWithClear(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onClear: () -> Unit,
+    label: String,
+    placeholder: String,
+    clearLabel: String,
+    currency: String,
+    enabled: Boolean = true,
+    supportingText: String? = null
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        suffix = { Text(currency) },
+        singleLine = true,
+        enabled = enabled,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        supportingText = supportingText?.let { { Text(it) } },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = onClear) {
+                    Icon(Icons.Filled.Clear, contentDescription = clearLabel)
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable

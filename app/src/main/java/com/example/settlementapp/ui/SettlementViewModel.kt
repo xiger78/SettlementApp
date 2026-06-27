@@ -74,6 +74,20 @@ class SettlementViewModel(
         viewModelScope.launch { repository.deleteMeeting(id) }
     }
 
+    fun deleteMeetings(ids: Collection<Long>) {
+        viewModelScope.launch {
+            ids.forEach { repository.deleteMeeting(it) }
+        }
+    }
+
+    fun clearReceiptPhoto(meetingId: Long) {
+        viewModelScope.launch {
+            repository.getMeeting(meetingId)?.let {
+                repository.updateMeeting(it.copy(receiptPhotoUri = null))
+            }
+        }
+    }
+
     fun setReceiptPhoto(meetingId: Long, uri: String?) {
         viewModelScope.launch {
             repository.getMeeting(meetingId)?.let {
