@@ -20,11 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -43,33 +41,25 @@ import com.example.settlementapp.data.Meeting
 import com.example.settlementapp.ui.SettlementViewModel
 import com.example.settlementapp.ui.components.AppCard
 import com.example.settlementapp.ui.components.EmptyState
-import com.example.settlementapp.ui.components.MenuCard
 import com.example.settlementapp.ui.components.Pill
 import com.example.settlementapp.ui.components.SectionHeader
 import com.example.settlementapp.ui.i18n.AppStrings
 import com.example.settlementapp.ui.i18n.LocalStrings
 import com.example.settlementapp.ui.theme.Gold
-import com.example.settlementapp.ui.theme.PayPay
 import com.example.settlementapp.ui.theme.Positive
-import com.example.settlementapp.ui.theme.Slate
-import com.example.settlementapp.ui.theme.Teal500
 import java.time.YearMonth
 
 @Composable
 fun HomeScreen(
     viewModel: SettlementViewModel,
     onRegisterMeeting: () -> Unit,
-    onRegisterParticipant: () -> Unit,
-    onSettlement: () -> Unit,
-    onMonthly: () -> Unit,
-    onSettings: () -> Unit,
     onOpenMeeting: (Long) -> Unit,
     onEditMeeting: (Long) -> Unit
 ) {
     val s = LocalStrings.current
     val meetings by viewModel.meetings.collectAsStateWithLifecycle()
 
-    val currentMonth = YearMonth.now().toString() // yyyy-MM
+    val currentMonth = YearMonth.now().toString()
     val thisMonthMeetings = meetings.filter { it.meetingDate.startsWith(currentMonth) }
     val thisMonthTotal = thisMonthMeetings.sumOf { it.settlementAmount }
 
@@ -87,47 +77,18 @@ fun HomeScreen(
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Spacer(Modifier.height(16.dp))
-                    SectionHeader(s.menu)
-                    Spacer(Modifier.height(8.dp))
-                    MenuCard(
-                        title = s.menuMeetingTitle,
-                        subtitle = s.menuMeetingSubtitle,
-                        icon = Icons.AutoMirrored.Filled.EventNote,
-                        accent = Teal500,
-                        onClick = onRegisterMeeting
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    MenuCard(
-                        title = s.menuParticipantTitle,
-                        subtitle = s.menuParticipantSubtitle,
-                        icon = Icons.Filled.Groups,
-                        accent = Positive,
-                        onClick = onRegisterParticipant
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    MenuCard(
-                        title = s.menuSettlementTitle,
-                        subtitle = s.menuSettlementSubtitle,
-                        icon = Icons.Filled.Receipt,
-                        accent = Gold,
-                        onClick = onSettlement
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    MenuCard(
-                        title = s.menuMonthlyTitle,
-                        subtitle = s.menuMonthlySubtitle,
-                        icon = Icons.Filled.CalendarMonth,
-                        accent = PayPay,
-                        onClick = onMonthly
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    MenuCard(
-                        title = s.menuSettingsTitle,
-                        subtitle = s.menuSettingsSubtitle,
-                        icon = Icons.Filled.Settings,
-                        accent = Slate,
-                        onClick = onSettings
-                    )
+                    Button(
+                        onClick = onRegisterMeeting,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.AutoMirrored.Filled.EventNote, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(s.newMeeting, style = MaterialTheme.typography.titleMedium)
+                    }
                     Spacer(Modifier.height(20.dp))
                     SectionHeader(s.recentMeetings)
                     Spacer(Modifier.height(8.dp))
@@ -167,7 +128,7 @@ private fun HomeHeader(s: AppStrings, thisMonthTotal: Long, meetingCount: Int) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 24.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(

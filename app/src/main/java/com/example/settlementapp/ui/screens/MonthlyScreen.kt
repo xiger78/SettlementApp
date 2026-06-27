@@ -58,6 +58,7 @@ private fun formatMonth(strings: AppStrings, yyyymm: String): String {
 @Composable
 fun MonthlyScreen(
     viewModel: SettlementViewModel,
+    isTabRoot: Boolean = false,
     onBack: () -> Unit,
     onOpenMeeting: (Long) -> Unit
 ) {
@@ -68,73 +69,78 @@ fun MonthlyScreen(
 
     val grandTotal = summaries.sumOf { it.totalAmount }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(s.monthlyTitle) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        }
-    ) { padding ->
+    val monthlyContent: @Composable (androidx.compose.foundation.layout.PaddingValues) -> Unit = { padding ->
         if (summaries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 EmptyState(text = s.monthlyEmpty, icon = Icons.Filled.CalendarMonth)
             }
-            return@Scaffold
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-        ) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text(
-                            s.grandTotal,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            s.money(grandTotal),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+            ) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text(
+                                s.grandTotal,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                s.money(grandTotal),
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
+                    Spacer(Modifier.height(14.dp))
                 }
-                Spacer(Modifier.height(14.dp))
-            }
 
-            items(summaries, key = { it.month }) { summary ->
-                val isOpen = expanded[summary.month] ?: false
-                MonthCard(
-                    strings = s,
-                    summary = summary,
-                    isOpen = isOpen,
-                    meetingsOfMonth = meetings.filter { it.meetingDate.startsWith(summary.month) },
-                    onToggle = { expanded[summary.month] = !isOpen },
-                    onOpenMeeting = onOpenMeeting
-                )
-                Spacer(Modifier.height(10.dp))
+                items(summaries, key = { it.month }) { summary ->
+                    val isOpen = expanded[summary.month] ?: false
+                    MonthCard(
+                        strings = s,
+                        summary = summary,
+                        isOpen = isOpen,
+                        meetingsOfMonth = meetings.filter { it.meetingDate.startsWith(summary.month) },
+                        onToggle = { expanded[summary.month] = !isOpen },
+                        onOpenMeeting = onOpenMeeting
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
             }
         }
+    }
+
+    if (isTabRoot) {
+        monthlyContent(androidx.compose.foundation.layout.PaddingValues(0.dp))
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(s.monthlyTitle) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        ) { padding -> monthlyContent(padding) }
     }
 }
 

@@ -20,6 +20,7 @@ data class AppStrings(
     val delete: String,
     val open: String,
     val currency: String,
+    val currencyPrefix: String = "",
     val storeUnset: String,
 
     // 홈
@@ -135,9 +136,15 @@ data class AppStrings(
     val settingsTitle: String,
     val languageSetting: String,
     val language: String,
-    val languageChangeNote: String
+    val languageChangeNote: String,
+    val currencySetting: String,
+    val currencyUnitName: String,
+    val currencyChangeNote: String
 ) {
-    fun money(value: Long): String = "${groupNumber(value)}$currency"
+    fun money(value: Long): String {
+        val num = groupNumber(value)
+        return if (currencyPrefix.isNotEmpty()) "$currencyPrefix$num" else "$num$currency"
+    }
     fun genderLabel(g: Gender): String = if (g == Gender.MALE) genderMale else genderFemale
     fun paymentLabel(p: PaymentType): String = if (p == PaymentType.CASH) cash else paypay
 }
@@ -158,16 +165,16 @@ val KoStrings = AppStrings(
     currency = "원",
     storeUnset = "가게 미입력",
 
-    menuMeetingTitle = "모임정보등록",
+    menuMeetingTitle = "모임정보",
     menuMeetingSubtitle = "모임날짜 · 가게 · 인원 등록",
-    menuParticipantTitle = "참가자등록",
+    menuParticipantTitle = "참가자",
     menuParticipantSubtitle = "모임별 참가자 이름·성별·정산형태",
     menuSettlementTitle = "정산",
     menuSettlementSubtitle = "금액 계산 · 영수증 촬영 · 정산완료",
-    menuMonthlyTitle = "월별정산일람",
+    menuMonthlyTitle = "월별정산",
     menuMonthlySubtitle = "월별 정산 합계 보기",
     menuSettingsTitle = "설정",
-    menuSettingsSubtitle = "언어 설정",
+    menuSettingsSubtitle = "언어 · 통화",
     recentMeetings = "최근 모임",
     thisMonthTotal = "이번 달 정산 합계",
     meetingCount = { n -> "모임 ${n}건" },
@@ -266,7 +273,10 @@ val KoStrings = AppStrings(
     settingsTitle = "설정",
     languageSetting = "언어 설정",
     language = "언어",
-    languageChangeNote = "선택한 언어로 메뉴와 화면이 즉시 변경됩니다. 처음 실행 시 휴대폰 시스템 언어가 자동 선택됩니다."
+    languageChangeNote = "선택한 언어로 메뉴와 화면이 즉시 변경됩니다. 처음 실행 시 휴대폰 시스템 언어가 자동 선택됩니다.",
+    currencySetting = "통화 설정",
+    currencyUnitName = "원",
+    currencyChangeNote = "선택한 언어에 맞는 통화 단위가 금액에 표시됩니다."
 )
 
 val JaStrings = AppStrings(
@@ -282,16 +292,16 @@ val JaStrings = AppStrings(
     currency = "円",
     storeUnset = "店舗未入力",
 
-    menuMeetingTitle = "集まり情報登録",
+    menuMeetingTitle = "集まり情報",
     menuMeetingSubtitle = "日付 · 店舗 · 人数を登録",
-    menuParticipantTitle = "参加者登録",
+    menuParticipantTitle = "参加者",
     menuParticipantSubtitle = "参加者の名前・性別・精算方法",
     menuSettlementTitle = "精算",
     menuSettlementSubtitle = "金額計算 · レシート撮影 · 精算完了",
-    menuMonthlyTitle = "月別精算一覧",
+    menuMonthlyTitle = "月別精算",
     menuMonthlySubtitle = "月別の精算合計を表示",
     menuSettingsTitle = "設定",
-    menuSettingsSubtitle = "言語設定",
+    menuSettingsSubtitle = "言語 · 通貨",
     recentMeetings = "最近の集まり",
     thisMonthTotal = "今月の精算合計",
     meetingCount = { n -> "集まり ${n}件" },
@@ -390,7 +400,10 @@ val JaStrings = AppStrings(
     settingsTitle = "設定",
     languageSetting = "言語設定",
     language = "言語",
-    languageChangeNote = "選択した言語にメニューと画面が即時変更されます。初回起動時は端末のシステム言語が自動選択されます。"
+    languageChangeNote = "選択した言語にメニューと画面が即時変更されます。初回起動時は端末のシステム言語が自動選択されます。",
+    currencySetting = "通貨設定",
+    currencyUnitName = "円",
+    currencyChangeNote = "選択した言語に合わせた通貨単位が金額に表示されます。"
 )
 
 fun stringsFor(lang: AppLanguage): AppStrings = when (lang) {

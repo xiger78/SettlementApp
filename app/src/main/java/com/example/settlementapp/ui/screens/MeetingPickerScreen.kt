@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -56,6 +58,7 @@ import com.example.settlementapp.ui.navigation.Routes
 fun MeetingPickerScreen(
     viewModel: SettlementViewModel,
     purpose: String,
+    isTabRoot: Boolean = false,
     onBack: () -> Unit,
     onPicked: (Long) -> Unit,
     onCreateNew: () -> Unit
@@ -63,55 +66,15 @@ fun MeetingPickerScreen(
     val s = LocalStrings.current
     val meetings by viewModel.meetings.collectAsStateWithLifecycle()
     val title = if (purpose == Routes.PURPOSE_SETTLEMENT) s.pickForSettlement else s.pickForParticipant
+    val screenTitle = if (isTabRoot) {
+        if (purpose == Routes.PURPOSE_SETTLEMENT) s.menuSettlementTitle else s.menuParticipantTitle
+    } else {
+        title
+    }
     val batchMode = purpose == Routes.PURPOSE_PARTICIPANT
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
-                    }
-                },
-                actions = {
-                    if (batchMode && meetings.isNotEmpty()) {
-                        IconButton(
-                            onClick = {
-                                selectedIds = if (selectedIds.size == meetings.size) {
-                                    emptySet()
-                                } else {
-                                    meetings.map { it.id }.toSet()
-                                }
-                            }
-                        ) {
-                            Text(
-                                if (selectedIds.size == meetings.size) s.deselectAll else s.selectAll,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onCreateNew,
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text(s.newMeeting) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        }
-    ) { padding ->
+    val pickerContent: @Composable (PaddingValues) -> Unit = { padding ->
         if (meetings.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 EmptyState(
@@ -125,6 +88,28 @@ fun MeetingPickerScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
+                if (batchMode && meetings.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = {
+                                selectedIds = if (selectedIds.size == meetings.size) {
+                                    emptySet()
+                                } else {
+                                    meetings.map { it.id }.toSet()
+                                }
+                            }
+                        ) {
+                            Text(
+                                if (selectedIds.size == meetings.size) s.deselectAll else s.selectAll
+                            )
+                        }
+                    }
+                }
                 if (batchMode && selectedIds.isNotEmpty()) {
                     OutlinedButton(
                         onClick = {
@@ -164,6 +149,67 @@ fun MeetingPickerScreen(
                 }
             }
         }
+    }
+
+    if (isTabRoot) {
+        Scaffold(
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = onCreateNew,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text(s.newMeeting) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        ) { padding -> pickerContent(padding) }
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(screenTitle) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
+                        }
+                    },
+                    actions = {
+                        if (batchMode && meetings.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    selectedIds = if (selectedIds.size == meetings.size) {
+                                        emptySet()
+                                    } else {
+                                        meetings.map { it.id }.toSet()
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    if (selectedIds.size == meetings.size) s.deselectAll else s.selectAll,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            },
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = onCreateNew,
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text(s.newMeeting) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        ) { padding -> pickerContent(padding) }
     }
 }
 

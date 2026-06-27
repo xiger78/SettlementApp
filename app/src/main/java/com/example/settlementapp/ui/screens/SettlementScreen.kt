@@ -216,7 +216,8 @@ fun SettlementScreen(
                         label = s.settlementAmountLabel,
                         placeholder = "0",
                         clearLabel = s.clearField,
-                        currency = s.currency,
+                        currencyPrefix = s.currencyPrefix,
+                        currencySuffix = s.currency,
                         supportingText = s.money(settlementAmount)
                     )
                     if (settlementAmount > 0 && totalCount > 0) {
@@ -250,7 +251,8 @@ fun SettlementScreen(
                         label = s.genderDiffLabel,
                         placeholder = "0",
                         clearLabel = s.clearField,
-                        currency = s.currency,
+                        currencyPrefix = s.currencyPrefix,
+                        currencySuffix = s.currency,
                         enabled = !femaleAmountEntered,
                         supportingText = when {
                             femaleAmountEntered -> s.genderDiffNote
@@ -269,7 +271,8 @@ fun SettlementScreen(
                         label = s.femalePerPersonLabel,
                         placeholder = s.equalPerPersonLabel,
                         clearLabel = s.clearField,
-                        currency = s.currency,
+                        currencyPrefix = s.currencyPrefix,
+                        currencySuffix = s.currency,
                         supportingText = when {
                             femaleAmountEntered -> s.femaleSumNote(femaleCount, s.money(femaleTotal))
                             settlementAmount > 0 && totalCount > 0 -> s.equalSplitNote
@@ -529,7 +532,8 @@ private fun AmountFieldWithClear(
     label: String,
     placeholder: String,
     clearLabel: String,
-    currency: String,
+    currencyPrefix: String = "",
+    currencySuffix: String = "",
     enabled: Boolean = true,
     supportingText: String? = null
 ) {
@@ -538,7 +542,12 @@ private fun AmountFieldWithClear(
         onValueChange = onValueChange,
         label = { Text(label) },
         placeholder = { Text(placeholder) },
-        suffix = { Text(currency) },
+        prefix = if (currencyPrefix.isNotEmpty()) {
+            { Text(currencyPrefix) }
+        } else null,
+        suffix = if (currencySuffix.isNotEmpty()) {
+            { Text(currencySuffix) }
+        } else null,
         singleLine = true,
         enabled = enabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
