@@ -112,6 +112,10 @@ val ZhStrings = AppStrings(
     settledProgress = { done, total -> "已完成: $done / ${total}人" },
     completeSettlement = "结算完成",
     savedHint = "结算内容已保存。",
+    quickSettlement = "快速结算",
+    quickParticipantsTitle = "快速结算参与者",
+    quickSettlementNote = "无需聚会信息，仅指定人数进行结算。不会保存到数据库。",
+    quickCompleteHint = "结算完成（未保存）。",
 
     monthlyTitle = "月度结算一览",
     monthlyEmpty = "暂无结算记录。",
@@ -119,10 +123,13 @@ val ZhStrings = AppStrings(
     monthFormat = { y, m -> "${y}年${m}月" },
 
     settingsTitle = "设置",
-    languageSetting = "语言设置",
+    languageSetting = "界面显示语言",
     language = "语言",
-    languageChangeNote = "选择后立即切换界面语言。首次启动时自动匹配手机系统语言。",
+    languageChangeNote = "选择后立即切换菜单和界面文字。首次启动时自动匹配手机系统语言。",
     currencySetting = "货币设置",
-    currencyUnitName = "元",
-    currencyChangeNote = "金额将按所选语言显示对应的货币单位。"
+    currencyKrw = "韩元 (KRW)",
+    currencyJpy = "日元 (JPY)",
+    currencyUsd = "美元 (USD)",
+    currencyCny = "人民币 (CNY)",
+    currencyChangeNote = "金额将按所选货币单位显示。"
 )

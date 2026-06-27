@@ -37,6 +37,7 @@ import com.example.settlementapp.ui.screens.MeetingFormScreen
 import com.example.settlementapp.ui.screens.MeetingPickerScreen
 import com.example.settlementapp.ui.screens.MonthlyScreen
 import com.example.settlementapp.ui.screens.ParticipantsScreen
+import com.example.settlementapp.ui.screens.QuickParticipantsScreen
 import com.example.settlementapp.ui.screens.SettingsScreen
 import com.example.settlementapp.ui.screens.SettlementScreen
 
@@ -160,7 +161,11 @@ fun SettlementNavHost(viewModel: SettlementViewModel) {
                     isTabRoot = true,
                     onBack = { navController.navigate(Routes.TAB_MEETING) },
                     onPicked = { id -> navController.navigate(Routes.settlement(id)) },
-                    onCreateNew = { navController.navigate(Routes.meetingForm()) }
+                    onCreateNew = { navController.navigate(Routes.meetingForm()) },
+                    onQuickSettlement = {
+                        viewModel.resetQuickSession()
+                        navController.navigate(Routes.QUICK_PARTICIPANTS)
+                    }
                 )
             }
 
@@ -177,6 +182,24 @@ fun SettlementNavHost(viewModel: SettlementViewModel) {
                 SettingsScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.QUICK_PARTICIPANTS) {
+                QuickParticipantsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onGoSettlement = { navController.navigate(Routes.QUICK_SETTLEMENT) }
+                )
+            }
+
+            composable(Routes.QUICK_SETTLEMENT) {
+                SettlementScreen(
+                    viewModel = viewModel,
+                    meetingId = 0,
+                    quickMode = true,
+                    onBack = { navController.popBackStack() },
+                    onEditParticipants = { navController.popBackStack() }
                 )
             }
 

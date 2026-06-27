@@ -5,6 +5,8 @@ object Routes {
     const val TAB_PARTICIPANT = "tab/participant"
     const val TAB_SETTLEMENT = "tab/settlement"
     const val TAB_MONTHLY = "tab/monthly"
+    const val QUICK_PARTICIPANTS = "quick/participants"
+    const val QUICK_SETTLEMENT = "quick/settlement"
     const val HOME = "home"
     const val MEETING_FORM = "meetingForm"        // ?meetingId=-1
     const val PICK_MEETING = "pickMeeting"        // /{purpose}

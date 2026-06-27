@@ -83,6 +83,7 @@ import com.example.settlementapp.util.toAmountLong
 fun SettlementScreen(
     viewModel: SettlementViewModel,
     meetingId: Long,
+    quickMode: Boolean = false,
     onBack: () -> Unit,
     onEditParticipants: () -> Unit
 ) {
@@ -91,6 +92,7 @@ fun SettlementScreen(
     val meeting by viewModel.meetingFlow(meetingId).collectAsStateWithLifecycle(initialValue = null)
     val dbParticipants by viewModel.participantsFlow(meetingId)
         .collectAsStateWithLifecycle(initialValue = emptyList())
+    val quickSession by viewModel.quickSession.collectAsStateWithLifecycle()
 
     // 입력 상태
     var settlementText by remember { mutableStateOf("") }   // 정산금액(영수증 총액)
@@ -104,7 +106,8 @@ fun SettlementScreen(
 
     var showSavedHint by remember { mutableStateOf(false) }
 
-    LaunchedEffect(meeting) {
+    LaunchedEffect(meeting, quickMode) {
+        if (quickMode) return@LaunchedEffect
         val m = meeting
         if (m != null && !seededAmount) {
             settlementText = if (m.settlementAmount > 0) m.settlementAmount.toString() else ""
@@ -117,12 +120,18 @@ fun SettlementScreen(
             seededAmount = true
         }
     }
-    LaunchedEffect(dbParticipants) {
+    LaunchedEffect(dbParticipants, quickMode) {
+        if (quickMode) return@LaunchedEffect
         if (!seededParticipants && dbParticipants.isNotEmpty()) {
             localParticipants.clear()
             localParticipants.addAll(dbParticipants)
             seededParticipants = true
         }
+    }
+    LaunchedEffect(quickSession.participants, quickMode) {
+        if (!quickMode) return@LaunchedEffect
+        localParticipants.clear()
+        localParticipants.addAll(quickSession.participants)
     }
 
     val settlementAmount = settlementText.toAmountLong()
@@ -154,15 +163,21 @@ fun SettlementScreen(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success && pendingUri != null) {
-            viewModel.setReceiptPhoto(meetingId, pendingUri.toString())
+            if (quickMode) {
+                viewModel.setQuickReceiptPhoto(pendingUri.toString())
+            } else {
+                viewModel.setReceiptPhoto(meetingId, pendingUri.toString())
+            }
         }
         pendingUri = null
     }
 
+    val receiptPhotoUri = if (quickMode) quickSession.receiptPhotoUri else meeting?.receiptPhotoUri
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(s.settlementTitle) },
+                title = { Text(if (quickMode) s.quickSettlement else s.settlementTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
@@ -189,18 +204,32 @@ fun SettlementScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
         ) {
             // 1~3. 모임 정보
-            item {
-                AppCard {
-                    SectionHeader(s.meetingInfo)
-                    Spacer(Modifier.height(4.dp))
-                    InfoRow(s.meetingDate, meeting?.meetingDate ?: "-")
-                    InfoRow(s.storeName, meeting?.storeName?.ifBlank { "-" } ?: "-")
-                    InfoRow(
-                        s.participantCount,
-                        s.countWithGenders(localParticipants.size, maleCount, femaleCount)
-                    )
+            if (!quickMode) {
+                item {
+                    AppCard {
+                        SectionHeader(s.meetingInfo)
+                        Spacer(Modifier.height(4.dp))
+                        InfoRow(s.meetingDate, meeting?.meetingDate ?: "-")
+                        InfoRow(s.storeName, meeting?.storeName?.ifBlank { "-" } ?: "-")
+                        InfoRow(
+                            s.participantCount,
+                            s.countWithGenders(localParticipants.size, maleCount, femaleCount)
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
                 }
-                Spacer(Modifier.height(14.dp))
+            } else {
+                item {
+                    AppCard {
+                        SectionHeader(s.participantCount)
+                        Spacer(Modifier.height(4.dp))
+                        InfoRow(
+                            s.registeredCount,
+                            s.countWithGenders(localParticipants.size, maleCount, femaleCount)
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
             }
 
             // 4~6. 금액 계산
@@ -338,7 +367,7 @@ fun SettlementScreen(
 
             // 7. 영수증 사진
             item {
-                val photo = meeting?.receiptPhotoUri
+                val photo = receiptPhotoUri
                 val fileSize = remember(photo) { ReceiptFiles.fileSizeLabel(context, photo) }
                 AppCard {
                     Row(
@@ -358,7 +387,11 @@ fun SettlementScreen(
                                 IconButton(
                                     onClick = {
                                         ReceiptFiles.deleteReceiptFile(context, photo)
-                                        viewModel.clearReceiptPhoto(meetingId)
+                                        if (quickMode) {
+                                            viewModel.clearQuickReceiptPhoto()
+                                        } else {
+                                            viewModel.clearReceiptPhoto(meetingId)
+                                        }
                                     }
                                 ) {
                                     Icon(
@@ -469,12 +502,17 @@ fun SettlementScreen(
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = {
-                        viewModel.resetSettlement(meetingId) {
+                        val resetAction = {
                             settlementText = ""
                             genderDiffText = ""
                             femaleText = ""
                             showSavedHint = false
                             localParticipants.replaceAll { it.copy(amount = 0, isSettled = false) }
+                        }
+                        if (quickMode) {
+                            viewModel.resetQuickSettlement(onDone = resetAction)
+                        } else {
+                            viewModel.resetSettlement(meetingId, onDone = resetAction)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp)
@@ -492,15 +530,26 @@ fun SettlementScreen(
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        viewModel.completeSettlement(
-                            meetingId = meetingId,
-                            settlementAmount = settlementAmount,
-                            femaleAmountInput = femaleAmountInput,
-                            genderDiffInput = genderDiffInput,
-                            femaleAmountEntered = femaleAmountEntered,
-                            genderDiffEntered = genderDiffEntered,
-                            participantsUi = localParticipants.toList()
-                        )
+                        if (quickMode) {
+                            viewModel.completeQuickSettlement(
+                                settlementAmount = settlementAmount,
+                                femaleAmountInput = femaleAmountInput,
+                                genderDiffInput = genderDiffInput,
+                                femaleAmountEntered = femaleAmountEntered,
+                                genderDiffEntered = genderDiffEntered,
+                                participantsUi = localParticipants.toList()
+                            )
+                        } else {
+                            viewModel.completeSettlement(
+                                meetingId = meetingId,
+                                settlementAmount = settlementAmount,
+                                femaleAmountInput = femaleAmountInput,
+                                genderDiffInput = genderDiffInput,
+                                femaleAmountEntered = femaleAmountEntered,
+                                genderDiffEntered = genderDiffEntered,
+                                participantsUi = localParticipants.toList()
+                            )
+                        }
                         showSavedHint = true
                     },
                     enabled = settlementAmount > 0,
@@ -513,7 +562,7 @@ fun SettlementScreen(
                 if (showSavedHint) {
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        s.savedHint,
+                        if (quickMode) s.quickCompleteHint else s.savedHint,
                         style = MaterialTheme.typography.labelMedium,
                         color = Positive
                     )

@@ -125,6 +125,10 @@ data class AppStrings(
     val settledProgress: (Int, Int) -> String,
     val completeSettlement: String,
     val savedHint: String,
+    val quickSettlement: String,
+    val quickParticipantsTitle: String,
+    val quickSettlementNote: String,
+    val quickCompleteHint: String,
 
     // 월별정산일람
     val monthlyTitle: String,
@@ -138,12 +142,21 @@ data class AppStrings(
     val language: String,
     val languageChangeNote: String,
     val currencySetting: String,
-    val currencyUnitName: String,
+    val currencyKrw: String,
+    val currencyJpy: String,
+    val currencyUsd: String,
+    val currencyCny: String,
     val currencyChangeNote: String
 ) {
     fun money(value: Long): String {
         val num = groupNumber(value)
         return if (currencyPrefix.isNotEmpty()) "$currencyPrefix$num" else "$num$currency"
+    }
+    fun currencyLabel(currency: AppCurrency): String = when (currency) {
+        AppCurrency.KRW -> currencyKrw
+        AppCurrency.JPY -> currencyJpy
+        AppCurrency.USD -> currencyUsd
+        AppCurrency.CNY -> currencyCny
     }
     fun genderLabel(g: Gender): String = if (g == Gender.MALE) genderMale else genderFemale
     fun paymentLabel(p: PaymentType): String = if (p == PaymentType.CASH) cash else paypay
@@ -264,6 +277,10 @@ val KoStrings = AppStrings(
     settledProgress = { done, total -> "정산 완료: $done / ${total}명" },
     completeSettlement = "정산완료",
     savedHint = "정산 내용이 저장되었습니다.",
+    quickSettlement = "퀵정산",
+    quickParticipantsTitle = "퀵정산 참가자",
+    quickSettlementNote = "모임 정보 없이 참가 인원만 지정해 정산합니다. DB에 저장되지 않습니다.",
+    quickCompleteHint = "정산이 완료되었습니다 (저장되지 않음).",
 
     monthlyTitle = "월별정산일람",
     monthlyEmpty = "정산 내역이 없습니다.",
@@ -271,12 +288,15 @@ val KoStrings = AppStrings(
     monthFormat = { y, m -> "${y}년 ${m}월" },
 
     settingsTitle = "설정",
-    languageSetting = "언어 설정",
+    languageSetting = "화면 표시 언어",
     language = "언어",
-    languageChangeNote = "선택한 언어로 메뉴와 화면이 즉시 변경됩니다. 처음 실행 시 휴대폰 시스템 언어가 자동 선택됩니다.",
+    languageChangeNote = "선택한 언어로 메뉴와 화면 문구가 즉시 변경됩니다. 처음 실행 시 휴대폰 시스템 언어가 자동 선택됩니다.",
     currencySetting = "통화 설정",
-    currencyUnitName = "원",
-    currencyChangeNote = "선택한 언어에 맞는 통화 단위가 금액에 표시됩니다."
+    currencyKrw = "원 (KRW)",
+    currencyJpy = "엔 (JPY)",
+    currencyUsd = "달러 (USD)",
+    currencyCny = "위안 (CNY)",
+    currencyChangeNote = "선택한 통화 단위로 금액이 표시됩니다."
 )
 
 val JaStrings = AppStrings(
@@ -391,6 +411,10 @@ val JaStrings = AppStrings(
     settledProgress = { done, total -> "精算完了: $done / ${total}名" },
     completeSettlement = "精算完了",
     savedHint = "精算内容を保存しました。",
+    quickSettlement = "クイック精算",
+    quickParticipantsTitle = "クイック精算 参加者",
+    quickSettlementNote = "集まり情報なしで参加人数のみ指定して精算します。DBには保存されません。",
+    quickCompleteHint = "精算が完了しました（保存されません）。",
 
     monthlyTitle = "月別精算一覧",
     monthlyEmpty = "精算履歴がありません。",
@@ -398,19 +422,28 @@ val JaStrings = AppStrings(
     monthFormat = { y, m -> "${y}年${m}月" },
 
     settingsTitle = "設定",
-    languageSetting = "言語設定",
+    languageSetting = "表示言語",
     language = "言語",
-    languageChangeNote = "選択した言語にメニューと画面が即時変更されます。初回起動時は端末のシステム言語が自動選択されます。",
+    languageChangeNote = "選択した言語でメニューと画面の文言が即時変更されます。初回起動時は端末のシステム言語が自動選択されます。",
     currencySetting = "通貨設定",
-    currencyUnitName = "円",
-    currencyChangeNote = "選択した言語に合わせた通貨単位が金額に表示されます。"
+    currencyKrw = "ウォン (KRW)",
+    currencyJpy = "円 (JPY)",
+    currencyUsd = "ドル (USD)",
+    currencyCny = "元 (CNY)",
+    currencyChangeNote = "選択した通貨単位で金額が表示されます。"
 )
 
-fun stringsFor(lang: AppLanguage): AppStrings = when (lang) {
-    AppLanguage.KOREAN -> KoStrings
-    AppLanguage.JAPANESE -> JaStrings
-    AppLanguage.ENGLISH -> EnStrings
-    AppLanguage.CHINESE -> ZhStrings
-}
+fun stringsFor(lang: AppLanguage, currency: AppCurrency = AppCurrency.KRW): AppStrings =
+    when (lang) {
+        AppLanguage.KOREAN -> KoStrings
+        AppLanguage.JAPANESE -> JaStrings
+        AppLanguage.ENGLISH -> EnStrings
+        AppLanguage.CHINESE -> ZhStrings
+    }.withCurrency(currency)
+
+fun AppStrings.withCurrency(currency: AppCurrency): AppStrings = copy(
+    currency = currency.suffix,
+    currencyPrefix = currency.prefix
+)
 
 val LocalStrings = staticCompositionLocalOf { KoStrings }

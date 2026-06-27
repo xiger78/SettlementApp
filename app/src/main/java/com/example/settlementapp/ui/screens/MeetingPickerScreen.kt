@@ -25,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,7 +62,8 @@ fun MeetingPickerScreen(
     isTabRoot: Boolean = false,
     onBack: () -> Unit,
     onPicked: (Long) -> Unit,
-    onCreateNew: () -> Unit
+    onCreateNew: () -> Unit,
+    onQuickSettlement: () -> Unit = {}
 ) {
     val s = LocalStrings.current
     val meetings by viewModel.meetings.collectAsStateWithLifecycle()
@@ -74,13 +76,31 @@ fun MeetingPickerScreen(
     val batchMode = purpose == Routes.PURPOSE_PARTICIPANT
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
 
+    val showQuickSettlement = isTabRoot && purpose == Routes.PURPOSE_SETTLEMENT
+
     val pickerContent: @Composable (PaddingValues) -> Unit = { padding ->
         if (meetings.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                EmptyState(
-                    text = s.pickerEmpty,
-                    icon = Icons.Filled.EventBusy
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+            ) {
+                if (showQuickSettlement) {
+                    Button(
+                        onClick = onQuickSettlement,
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Text(s.quickSettlement, style = MaterialTheme.typography.titleMedium)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    EmptyState(
+                        text = s.pickerEmpty,
+                        icon = Icons.Filled.EventBusy
+                    )
+                }
             }
         } else {
             Column(
@@ -88,6 +108,17 @@ fun MeetingPickerScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
+                if (showQuickSettlement) {
+                    Button(
+                        onClick = onQuickSettlement,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(s.quickSettlement, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
                 if (batchMode && meetings.isNotEmpty()) {
                     Row(
                         modifier = Modifier

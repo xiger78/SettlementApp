@@ -2,6 +2,7 @@ package com.example.settlementapp.data
 
 import android.content.Context
 import com.example.settlementapp.ui.i18n.AppLanguage
+import com.example.settlementapp.ui.i18n.AppCurrency
 
 /** 앱 설정(언어 등)을 SharedPreferences 에 저장 */
 class SettingsStore(context: Context) {
@@ -23,7 +24,14 @@ class SettingsStore(context: Context) {
 
     fun hasUserLanguagePreference(): Boolean = prefs.contains(KEY_LANGUAGE)
 
+    fun getCurrency(): AppCurrency = AppCurrency.fromCode(prefs.getString(KEY_CURRENCY, null))
+
+    fun setCurrency(currency: AppCurrency) {
+        prefs.edit().putString(KEY_CURRENCY, currency.code).apply()
+    }
+
     companion object {
         private const val KEY_LANGUAGE = "language"
+        private const val KEY_CURRENCY = "currency"
     }
 }

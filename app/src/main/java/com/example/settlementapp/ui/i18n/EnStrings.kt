@@ -113,6 +113,10 @@ val EnStrings = AppStrings(
     settledProgress = { done, total -> "Settled: $done / $total" },
     completeSettlement = "Complete",
     savedHint = "Settlement saved.",
+    quickSettlement = "Quick Settlement",
+    quickParticipantsTitle = "Quick Settlement Participants",
+    quickSettlementNote = "Settle with headcount only, without meeting info. Not saved to database.",
+    quickCompleteHint = "Settlement complete (not saved).",
 
     monthlyTitle = "Monthly Summary",
     monthlyEmpty = "No settlement history.",
@@ -124,10 +128,13 @@ val EnStrings = AppStrings(
     },
 
     settingsTitle = "Settings",
-    languageSetting = "Language",
+    languageSetting = "Display Language",
     language = "Language",
-    languageChangeNote = "UI updates instantly. On first launch, your phone system language is selected automatically.",
+    languageChangeNote = "Menu and screen text update instantly. On first launch, your phone system language is selected automatically.",
     currencySetting = "Currency",
-    currencyUnitName = "Dollar ($)",
-    currencyChangeNote = "Amounts are shown in the currency unit for the selected language."
+    currencyKrw = "Won (KRW)",
+    currencyJpy = "Yen (JPY)",
+    currencyUsd = "Dollar (USD)",
+    currencyCny = "Yuan (CNY)",
+    currencyChangeNote = "Amounts are shown in the selected currency."
 )

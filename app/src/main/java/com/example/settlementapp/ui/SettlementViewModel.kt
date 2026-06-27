@@ -12,6 +12,7 @@ import com.example.settlementapp.data.PaymentType
 import com.example.settlementapp.data.SettingsStore
 import com.example.settlementapp.data.SettlementRepository
 import com.example.settlementapp.ui.i18n.AppLanguage
+import com.example.settlementapp.ui.i18n.AppCurrency
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,9 +31,25 @@ class SettlementViewModel(
     private val _language = MutableStateFlow(settingsStore.getLanguage())
     val language: StateFlow<AppLanguage> = _language.asStateFlow()
 
+    private val _currency = MutableStateFlow(settingsStore.getCurrency())
+    val currency: StateFlow<AppCurrency> = _currency.asStateFlow()
+
+    data class QuickSession(
+        val participants: List<Participant> = emptyList(),
+        val receiptPhotoUri: String? = null
+    )
+
+    private val _quickSession = MutableStateFlow(QuickSession())
+    val quickSession: StateFlow<QuickSession> = _quickSession.asStateFlow()
+
     fun setLanguage(language: AppLanguage) {
         settingsStore.setLanguage(language)
         _language.value = language
+    }
+
+    fun setCurrency(currency: AppCurrency) {
+        settingsStore.setCurrency(currency)
+        _currency.value = currency
     }
 
     /** 시스템 언어 자동 선택(사용자 미설정) 시 갱신 */
@@ -177,6 +194,107 @@ class SettlementViewModel(
         repository.updateMeeting(
             meeting.copy(totalCount = list.size, maleCount = male, femaleCount = female)
         )
+    }
+
+    // ---- 퀵정산 (DB 미저장) ----
+    fun resetQuickSession() {
+        _quickSession.value = QuickSession()
+    }
+
+    fun registerQuickParticipantsFromCounts(
+        maleCount: Int,
+        femaleCount: Int,
+        maleNameForIndex: (Int) -> String,
+        femaleNameForIndex: (Int) -> String,
+        paymentType: PaymentType = PaymentType.CASH
+    ) {
+        if (maleCount <= 0 && femaleCount <= 0) return
+        val existing = _quickSession.value.participants
+        var slots = MAX_PARTICIPANTS - existing.size
+        if (slots <= 0) return
+
+        val existingMale = existing.count { it.gender == Gender.MALE }
+        val existingFemale = existing.count { it.gender == Gender.FEMALE }
+        var nextId = (existing.maxOfOrNull { it.id } ?: 0L) + 1L
+        val toAdd = mutableListOf<Participant>()
+
+        (1..maleCount).take(slots).forEach { i ->
+            toAdd.add(
+                Participant(
+                    id = nextId++,
+                    meetingId = 0,
+                    name = maleNameForIndex(existingMale + i),
+                    gender = Gender.MALE,
+                    paymentType = paymentType
+                )
+            )
+            slots--
+        }
+        (1..femaleCount).take(slots).forEach { i ->
+            toAdd.add(
+                Participant(
+                    id = nextId++,
+                    meetingId = 0,
+                    name = femaleNameForIndex(existingFemale + i),
+                    gender = Gender.FEMALE,
+                    paymentType = paymentType
+                )
+            )
+        }
+        _quickSession.value = _quickSession.value.copy(participants = existing + toAdd)
+    }
+
+    fun updateQuickParticipant(participant: Participant) {
+        val list = _quickSession.value.participants.map {
+            if (it.id == participant.id) participant else it
+        }
+        _quickSession.value = _quickSession.value.copy(participants = list)
+    }
+
+    fun deleteQuickParticipant(participant: Participant) {
+        val list = _quickSession.value.participants.filter { it.id != participant.id }
+        _quickSession.value = _quickSession.value.copy(participants = list)
+    }
+
+    fun setQuickReceiptPhoto(uri: String?) {
+        _quickSession.value = _quickSession.value.copy(receiptPhotoUri = uri)
+    }
+
+    fun clearQuickReceiptPhoto() {
+        _quickSession.value = _quickSession.value.copy(receiptPhotoUri = null)
+    }
+
+    fun completeQuickSettlement(
+        settlementAmount: Long,
+        femaleAmountInput: Long,
+        genderDiffInput: Long,
+        femaleAmountEntered: Boolean,
+        genderDiffEntered: Boolean,
+        participantsUi: List<Participant>
+    ) {
+        val maleCount = participantsUi.count { it.gender == Gender.MALE }
+        val femaleCount = participantsUi.count { it.gender == Gender.FEMALE }
+        val calc = computeSettlement(
+            settlementAmount = settlementAmount,
+            femaleAmountInput = femaleAmountInput,
+            genderDiffInput = genderDiffInput,
+            femaleCount = femaleCount,
+            maleCount = maleCount,
+            femaleAmountEntered = femaleAmountEntered,
+            genderDiffEntered = genderDiffEntered
+        )
+        val updated = participantsUi.map { p ->
+            val amount = if (p.gender == Gender.FEMALE) calc.femalePerPerson else calc.malePerPerson
+            p.copy(amount = amount)
+        }
+        _quickSession.value = _quickSession.value.copy(participants = updated)
+    }
+
+    fun resetQuickSettlement(onDone: () -> Unit = {}) {
+        _quickSession.value = _quickSession.value.copy(
+            participants = _quickSession.value.participants.map { it.copy(amount = 0, isSettled = false) }
+        )
+        onDone()
     }
 
     // ---- 정산 ----

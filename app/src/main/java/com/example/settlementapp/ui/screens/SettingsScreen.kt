@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.settlementapp.ui.SettlementViewModel
 import com.example.settlementapp.ui.components.AppCard
 import com.example.settlementapp.ui.components.SectionHeader
+import com.example.settlementapp.ui.i18n.AppCurrency
 import com.example.settlementapp.ui.i18n.AppLanguage
 import com.example.settlementapp.ui.i18n.LocalStrings
 
@@ -45,7 +46,8 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val s = LocalStrings.current
-    val current by viewModel.language.collectAsStateWithLifecycle()
+    val currentLanguage by viewModel.language.collectAsStateWithLifecycle()
+    val currentCurrency by viewModel.currency.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -89,9 +91,9 @@ fun SettingsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 AppLanguage.entries.forEach { lang ->
-                    LanguageRow(
+                    SelectRow(
                         title = lang.nativeName,
-                        selected = lang == current,
+                        selected = lang == currentLanguage,
                         onClick = { viewModel.setLanguage(lang) }
                     )
                     Spacer(Modifier.height(8.dp))
@@ -117,18 +119,14 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(12.dp))
-                Surface(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        s.currencyUnitName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+
+                AppCurrency.entries.forEach { currency ->
+                    SelectRow(
+                        title = s.currencyLabel(currency),
+                        selected = currency == currentCurrency,
+                        onClick = { viewModel.setCurrency(currency) }
                     )
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
@@ -136,7 +134,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun LanguageRow(
+private fun SelectRow(
     title: String,
     selected: Boolean,
     onClick: () -> Unit

@@ -272,7 +272,7 @@ fun ParticipantsScreen(
 }
 
 @Composable
-private fun ParticipantEditRow(
+internal fun ParticipantEditRow(
     strings: AppStrings,
     index: Int,
     name: String,

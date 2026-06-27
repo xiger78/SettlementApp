@@ -31,8 +31,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val language by viewModel.language.collectAsStateWithLifecycle()
+            val currency by viewModel.currency.collectAsStateWithLifecycle()
             SettlementAppTheme {
-                CompositionLocalProvider(LocalStrings provides stringsFor(language)) {
+                CompositionLocalProvider(LocalStrings provides stringsFor(language, currency)) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
